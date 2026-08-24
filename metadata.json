@@ -1,0 +1,8 @@
+{
+  "name": "EncontreAí",
+  "description": "Marketplace de prestadores de serviços, o iFood dos serviços.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
