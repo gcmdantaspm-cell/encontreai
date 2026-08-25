@@ -12,6 +12,7 @@ export interface AppUser {
   categoryId?: string;
   cpfCnpj?: string;
   password?: string;
+  favorites?: string[]; // IDs dos profissionais favoritos
   createdAt: string;
 }
 
@@ -22,7 +23,7 @@ export interface ProfService {
   description?: string;
   category?: string;
   price: number;
-  duration?: number; // duration in minutes
+  duration?: number; // minutos
 }
 
 export interface Professional {
@@ -33,6 +34,7 @@ export interface Professional {
   categoryId: string;
   avatarUrl: string;
   coverUrl: string;
+  portfolio?: string[]; // Galeria de fotos
   rating: number;
   reviewsCount: number;
   verified: boolean;
@@ -48,11 +50,14 @@ export interface Appointment {
   serviceId: string;
   serviceTitle: string;
   price: number;
+  originalPrice?: number;
+  discount?: number;
   date: string;
   time: string;
   status: 'pending' | 'approved' | 'completed' | 'cancelled';
   clientName: string;
   professionalName: string;
+  reviewed?: boolean; // Se o cliente já avaliou
   createdAt: string;
   notes?: string;
 }
@@ -60,7 +65,7 @@ export interface Appointment {
 export interface Category {
   id: string;
   name: string;
-  icon: string; // Material Symbols icon name
+  icon: string;
 }
 
 export interface Review {
@@ -73,11 +78,18 @@ export interface Review {
   createdAt: string;
 }
 
-export interface AppNotification {
+export interface ChatMessage {
   id: string;
-  title: string;
-  message: string;
-  read: boolean;
-  icon: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
   createdAt: string;
+}
+
+export interface Coupon {
+  id: string;
+  professionalId: string;
+  code: string;
+  discountPercent: number;
+  active: boolean;
 }
