@@ -56,7 +56,7 @@ function useAuth() {
   
   const updateRole = async (role: UserRole, extra?: any) => {
     if(!user) return;
-    const updates = { role, ...extra };
+    const updates = { role, ...extra, rating: 5.0, reviewsCount: 0 };
     await updateDoc(doc(db, 'users', user.id), updates);
     setUser({ ...user, ...updates });
   };
@@ -80,8 +80,8 @@ function useSearch() {
         return {
           id: d.id, name: u.name, profession: u.profession || 'Especialista',
           avatarUrl: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.avatarInitial}&background=random`,
-          coverUrl: `https://picsum.photos/seed/${d.id}/600/300`,
-          rating: 5.0, verified: true, services: []
+          coverUrl: u.coverUrl || `https://picsum.photos/seed/${d.id}/600/300`,
+          rating: u.rating || 5.0, verified: true, services: []
         } as Professional;
       });
       setPros([...PROFESSIONALS, ...dbPros]);
@@ -107,18 +107,18 @@ function useServices(pid?: string) {
 }
 
 function useAppointments(uid?: string, role?: string) {
-  const [apts, setApts] = useState<Appointment[]>([]);
+  const [apts, setApts] = useState<any[]>([]);
   const load = useCallback(async () => {
     if (!uid || !role || role === 'pending') return;
     const field = role === 'professional' ? 'professionalId' : 'clientId';
     const snap = await getDocs(query(collection(db, 'appointments'), where(field, '==', uid)));
-    let data = snap.docs.map(d => ({ ...d.data(), id: d.id } as Appointment));
+    let data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
     data.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setApts(data);
   }, [uid, role]);
   useEffect(() => { load(); }, [load]);
   
-  const add = async (a: Omit<Appointment, 'id' | 'createdAt'>) => {
+  const add = async (a: any) => {
     await addDoc(collection(db, 'appointments'), { ...a, createdAt: new Date().toISOString() });
     load();
   };
@@ -145,6 +145,19 @@ function useChat(uid?: string) {
     await addDoc(collection(db, 'chats'), { senderId: uid, receiverId, text, participants: [uid, receiverId], createdAt: new Date().toISOString() });
   };
   return { msgs, send };
+}
+
+function useReviews(pid?: string) {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  useEffect(() => {
+    if(!pid) return;
+    getDocs(query(collection(db, 'reviews'), where('professionalId', '==', pid))).then(snap => {
+      let data = snap.docs.map(d => ({ ...d.data(), id: d.id } as Review));
+      data.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setReviews([...data, ...MOCK_REVIEWS]); // Mix true DB reviews with mock design ones
+    });
+  }, [pid]);
+  return { reviews };
 }
 
 function useDarkMode() {
@@ -229,7 +242,7 @@ export default function App() {
             {(screen === 'home' || screen === 'search') && <motion.div key="s" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><SearchScreen pros={pros} go={go} isDark={isDark} /></motion.div>}
             {screen === 'dashboard' && <motion.div key="d" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><DashboardProScreen user={user} go={go} isDark={isDark} /></motion.div>}
             {screen === 'my-services' && <motion.div key="ms" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><MyServicesScreen user={user} show={show} isDark={isDark} /></motion.div>}
-            {screen === 'orders' && <motion.div key="o" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><OrdersScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
+            {screen === 'orders' && <motion.div key="o" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} /></motion.div>}
             {screen === 'profile' && <motion.div key="p" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProfileScreen user={user} go={go} logout={() => { logout(); go('home'); }} isDark={isDark} toggleDarkMode={toggleDarkMode} /></motion.div>}
             {screen === 'pro-detail' && selPro && <motion.div key="pd" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProDetailScreen pro={selPro} onBack={() => go('search')} user={user} go={go} show={show} isDark={isDark} toggleFavorite={toggleFavorite} /></motion.div>}
             {screen === 'auth' && <motion.div key="a" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} exit={{opacity:0}}><AuthScreen onOk={() => go('home')} loginWithGoogle={loginWithGoogle} show={show} /></motion.div>}
@@ -430,9 +443,32 @@ function MyServicesScreen({ user, isDark, show }: any) {
   )
 }
 
-function OrdersScreen({ user, pros, go, isDark }: any) {
+function OrdersScreen({ user, pros, go, isDark, show }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const [filter, setFilter] = useState('all');
+  const [reviewModal, setReviewModal] = useState<any>(null);
+
+  const submitReview = async (rating: number, text: string) => {
+    await addDoc(collection(db, 'reviews'), {
+      professionalId: reviewModal.professionalId, clientId: user.id, clientName: user.name, rating, text, createdAt: new Date().toISOString()
+    });
+    await updateDoc(doc(db, 'appointments', reviewModal.id), { reviewed: true });
+    
+    // Update pro average rating
+    const proRef = doc(db, 'users', reviewModal.professionalId);
+    const proSnap = await getDoc(proRef);
+    if(proSnap.exists()) {
+      const data = proSnap.data();
+      const currentRating = data.rating || 5; const count = data.reviewsCount || 0;
+      const newCount = count + 1; const newRating = ((currentRating * count) + rating) / newCount;
+      await updateDoc(proRef, { rating: newRating, reviewsCount: newCount });
+    }
+    
+    updateStatus(reviewModal.id, 'completed'); // refresh local apt state
+    setReviewModal(null);
+    show('Avaliação enviada!');
+  };
+
   if (!user) return null;
   const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && a.status === 'approved') || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
   const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
@@ -474,16 +510,23 @@ function OrdersScreen({ user, pros, go, isDark }: any) {
                   {user.role === 'professional' && <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 rounded-lg bg-[#4ade80] text-[#14532d] font-bold text-sm">Concluir</button>}
                 </div>
               )}
+              {a.status === 'completed' && user.role === 'client' && !a.reviewed && (
+                <div className="flex gap-2 mt-3">
+                  <button onClick={()=>setReviewModal(a)} className={`flex-1 py-2 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${isDark?'border-[#3f3f46] text-[#f97316]':'border-[#f97316] text-[#c2410c]'}`}><Icon name="star" size={18}/> Avaliar Profissional</button>
+                </div>
+              )}
             </div>
           )
         })}
       </div>
+      <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} />}</AnimatePresence>
     </div>
   );
 }
 
 function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }: any) {
   const { services } = useServices(pro.id);
+  const { reviews } = useReviews(pro.id);
   const svc = services[0] || { id: 's1', price: 120, title: pro.profession };
   const [bookModal, setBookModal] = useState(false);
   const { add } = useAppointments(user?.id, user?.role);
@@ -500,13 +543,22 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         <div className="px-4 -mt-10 relative z-10">
           <h2 className="font-black text-2xl leading-tight mb-1">{pro.name}</h2>
           <p className={`text-base font-semibold ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
-          <div className="mt-5"><p className="font-black text-3xl">R$ {svc.price.toFixed(0)}<span className="text-sm font-normal">/visita</span></p></div>
+          <div className="mt-5 mb-10"><p className="font-black text-3xl">R$ {svc.price.toFixed(0)}<span className="text-sm font-normal">/visita</span></p></div>
+          
+          <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="star" fill className="text-[#f97316]"/> Avaliações</h3>
+          {reviews.length === 0 ? <p className={`text-sm py-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ainda não há avaliações.</p> : reviews.map((r:any) => (
+             <div key={r.id} className={`p-4 rounded-xl border mb-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+               <div className="flex items-center gap-1 mb-2 text-[#f97316]"><Icon name="star" fill size={16}/> <span className={`font-bold text-sm ${isDark?'text-white':'text-black'}`}>{r.rating.toFixed(1)}</span></div>
+               <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{r.text || 'Sem comentário.'}</p>
+               <p className={`text-xs mt-3 font-bold ${isDark?'text-gray-500':'text-gray-400'}`}>{r.clientName}</p>
+             </div>
+          ))}
         </div>
       </div>
       <div className={`fixed bottom-0 w-full max-w-[448px] p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
         <div className="flex gap-2 pointer-events-auto">
           <button onClick={() => { if(!user) go('auth'); else go('chat-detail', {id: pro.id, name: pro.name}); }} className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#60a5fa]':'bg-white border-[#e5e7eb] text-[#002a5d]'}`}><Icon name="chat" size={24} /></button>
-          <button onClick={() => { if(!user) go('auth'); else setBookModal(true); }} className="flex-1 rounded-2xl font-black text-lg text-black bg-[#f97316]">Agendar</button>
+          <button onClick={() => { if(!user) go('auth'); else setBookModal(true); }} className="flex-1 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">Agendar</button>
         </div>
       </div>
       <AnimatePresence>
@@ -525,6 +577,24 @@ function BookingModal({ svc, onClose, onBook, isDark }: any) {
         <h2 className="font-bold text-xl mb-5">Agendar: {svc.title}</h2>
         <div className="flex gap-3 mb-6"><input type="date" value={d} onChange={e=>setD(e.target.value)} className={`flex-1 border rounded-xl py-3.5 px-4 outline-none ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /><input type="time" value={t} onChange={e=>setT(e.target.value)} className={`flex-1 border rounded-xl py-3.5 px-4 outline-none ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /></div>
         <button onClick={() => onBook(d,t)} disabled={!d||!t} className="w-full py-4 rounded-xl font-bold text-black disabled:opacity-50 bg-[#f97316]">Confirmar por R$ {svc.price}</button>
+      </motion.div>
+    </>
+  );
+}
+
+function ReviewModal({ a, onClose, onSubmit, isDark }: any) {
+  const [r, setR] = useState(5); const [t, setT] = useState('');
+  return (
+    <>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
+        <h2 className="font-bold text-2xl mb-1">Avaliar Serviço</h2>
+        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Como foi o serviço de {a.professionalName}?</p>
+        <div className="flex justify-center gap-3 mb-8">
+          {[1,2,3,4,5].map(i => <button key={i} onClick={()=>setR(i)} className="active:scale-90 transition-transform"><Icon name="star" fill={i<=r} size={48} className={i<=r ? 'text-[#f97316]' : (isDark?'text-[#3f3f46]':'text-gray-300')} /></button>)}
+        </div>
+        <textarea value={t} onChange={e=>setT(e.target.value)} placeholder="Deixe um comentário (opcional)" className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm min-h-[100px] ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+        <button onClick={()=>onSubmit(r,t)} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform">Enviar Avaliação</button>
       </motion.div>
     </>
   );
