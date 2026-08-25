@@ -299,7 +299,16 @@ function OnboardingScreen({ updateRole, isDark }: any) {
 ═══════════════════════════════════════ */
 function SearchScreen({ pros, go, isDark }: any) {
   const [q, setQ] = useState(''); const [filter, setFilter] = useState('loc');
-  const filtered = pros.filter((p:any) => q ? (p.name.toLowerCase().includes(q.toLowerCase()) || p.profession.toLowerCase().includes(q.toLowerCase())) : true);
+  
+  let filtered = pros.filter((p:any) => q ? (p.name.toLowerCase().includes(q.toLowerCase()) || p.profession.toLowerCase().includes(q.toLowerCase())) : true);
+
+  if (filter === 'price') {
+    filtered.sort((a:any, b:any) => (a.services?.[0]?.price || 100) - (b.services?.[0]?.price || 100));
+  } else if (filter === 'rate') {
+    filtered = filtered.filter((p:any) => p.rating >= 4.5);
+    filtered.sort((a:any, b:any) => b.rating - a.rating);
+  }
+
   return (
     <div className="pb-8">
       <div className={`px-4 pt-4 pb-3 sticky top-[57px] z-40 ${isDark ? 'bg-[#18181b]/95' : 'bg-[#f8f9fa]/95'} backdrop-blur-sm border-b ${isDark ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
@@ -309,7 +318,7 @@ function SearchScreen({ pros, go, isDark }: any) {
           <button className="absolute right-1 w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black"><Icon name="arrow_forward" size={20}/></button>
         </div>
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {[{id:'loc', l:'Localização', i:'location_on'}, {id:'price', l:'Preço', i:'payments'}, {id:'rate', l:'Avaliação: 4.5+', i:'star'}].map(f => (
+          {[{id:'loc', l:'Localização', i:'location_on'}, {id:'price', l:'Menor Preço', i:'payments'}, {id:'rate', l:'Avaliação 4.5+', i:'star'}].map(f => (
             <button key={f.id} onClick={() => setFilter(f.id)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-1 transition-colors ${filter===f.id ? (isDark ? 'bg-[#3730a3] text-white border-[#3730a3]' : 'bg-[#f0f4ff] text-[#002a5d] border-[#002a5d]') : (isDark ? 'bg-transparent text-[#a1a1aa] border-[#3f3f46]' : 'bg-white text-gray-600 border-[#e5e7eb]')}`}>
               <Icon name={f.i} size={14} className={filter===f.id ? (isDark?'text-white':'text-[#002a5d]') : ''}/> {f.l}
             </button>
@@ -317,6 +326,7 @@ function SearchScreen({ pros, go, isDark }: any) {
         </div>
       </div>
       <div className="px-4 mt-4 flex flex-col gap-4">
+        {filtered.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="search_off" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhum profissional encontrado.</p></div>}
         {filtered.map((p:any) => (
           <button key={p.id} onClick={() => go('pro-detail', p.id)} className={`rounded-2xl shadow-sm border p-3 flex gap-3 items-start text-left ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
             <div className="relative"><img src={p.avatarUrl} className="w-24 h-28 rounded-xl object-cover" />{p.verified && <div className="absolute top-1 right-1 rounded-full p-0.5 bg-white"><Icon name="verified" fill size={18} className="text-[#3b82f6]" /></div>}</div>
