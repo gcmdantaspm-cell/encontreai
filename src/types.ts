@@ -1,41 +1,11 @@
 export type UserRole = 'client' | 'professional';
 
-export interface Review {
-  id: string;
-  authorName: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
-
-export interface Professional {
-  id: string;
-  name: string;
-  profession: string;
-  rating: number;
-  reviewsCount: number;
-  verified: boolean;
-  activeSubscription: boolean;
-  avatarUrl: string;
-  coverUrl: string;
-  description: string;
-  portfolio: string[];
-  reviews: Review[];
-  whatsapp?: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-}
-
 export interface AppUser {
   id: string;
   name: string;
   email: string;
   phone: string;
-  password: string;
+  password?: string;
   role: UserRole;
   avatarInitial: string;
   profession?: string;
@@ -44,15 +14,25 @@ export interface AppUser {
   createdAt: string;
 }
 
-export interface OrcamentoRequest {
+export interface ProfService {
   id: string;
-  userId: string;
   professionalId: string;
+  title: string;
+  price: number;
+}
+
+export interface Appointment {
+  id: string;
+  professionalId: string;
+  clientId: string;
+  serviceId: string;
+  serviceTitle: string;
+  price: number;
+  date: string;
+  time: string;
+  status: 'pending' | 'approved' | 'cancelled';
+  clientName: string;
   professionalName: string;
-  profession: string;
-  message: string;
-  contactTime: string;
-  status: 'pending' | 'viewed' | 'responded';
   createdAt: string;
 }
 
@@ -61,6 +41,34 @@ export interface AppNotification {
   title: string;
   message: string;
   read: boolean;
+  icon: string;
   createdAt: string;
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  profession: string;
+  categoryId: string;
+  rating: number;
+  reviewsCount: number;
+  avatarUrl: string;
+  coverUrl: string;
+  description: string;
+  verified: boolean;
+  activeSubscription: boolean;
+  portfolio: string[];
+  reviews: Array<{
+    id: string;
+    authorName: string;
+    rating: number;
+    comment: string;
+    date: string;
+  }>;
+}
+
+export interface Category {
+  id: string;
+  name: string;
   icon: string;
 }
