@@ -183,7 +183,6 @@ export default function App() {
     setScreen(s); window.scrollTo(0, 0); 
   };
 
-  // Route enforcement based on role
   useEffect(() => {
     if (user?.role === 'professional' && screen === 'home') setScreen('dashboard');
     if (user?.role === 'client' && screen === 'dashboard') setScreen('search');
@@ -234,7 +233,7 @@ export default function App() {
             {screen === 'profile' && <motion.div key="p" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProfileScreen user={user} go={go} logout={() => { logout(); go('home'); }} isDark={isDark} toggleDarkMode={toggleDarkMode} /></motion.div>}
             {screen === 'pro-detail' && selPro && <motion.div key="pd" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProDetailScreen pro={selPro} onBack={() => go('search')} user={user} go={go} show={show} isDark={isDark} toggleFavorite={toggleFavorite} /></motion.div>}
             {screen === 'auth' && <motion.div key="a" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} exit={{opacity:0}}><AuthScreen onOk={() => go('home')} loginWithGoogle={loginWithGoogle} show={show} /></motion.div>}
-            {screen === 'chat-list' && <motion.div key="cl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ChatListScreen go={go} isDark={isDark} /></motion.div>}
+            {screen === 'chat-list' && <motion.div key="cl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ChatListScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
             {screen === 'chat-detail' && chatUser && <motion.div key="cd" initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0}}><ChatDetailScreen user={user} chatUser={chatUser} go={go} isDark={isDark} /></motion.div>}
             {screen === 'favorites' && <motion.div key="fav" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><FavoritesScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
           </AnimatePresence>
@@ -264,7 +263,7 @@ export default function App() {
 }
 
 /* ═══════════════════════════════════════
-   ONBOARDING (ROLE SELECTION)
+   ONBOARDING
 ═══════════════════════════════════════ */
 function OnboardingScreen({ updateRole, isDark }: any) {
   const [step, setStep] = useState(1);
@@ -288,19 +287,15 @@ function OnboardingScreen({ updateRole, isDark }: any) {
        <button onClick={()=>setStep(1)} className="mb-6 self-start"><Icon name="arrow_back" /></button>
        <h1 className="text-3xl font-black mb-2">Seu Perfil Profissional</h1>
        <p className={`mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Qual é a sua especialidade principal? Isso ajudará os clientes a te encontrarem.</p>
-       
        <label className="font-bold text-sm mb-2 block">Sua Profissão</label>
        <input value={prof} onChange={e=>setProf(e.target.value)} placeholder="Ex: Eletricista Residencial, Diarista..." className={`w-full p-4 rounded-xl mb-8 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
-       
-       <button disabled={!prof} onClick={() => updateRole('professional', { profession: prof })} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl disabled:opacity-50 shadow-lg active:scale-95 transition-transform mt-auto mb-10">
-         Concluir Cadastro
-       </button>
+       <button disabled={!prof} onClick={() => updateRole('professional', { profession: prof })} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl disabled:opacity-50 shadow-lg active:scale-95 transition-transform mt-auto mb-10">Concluir Cadastro</button>
     </div>
   )
 }
 
 /* ═══════════════════════════════════════
-   SCREENS (CLIENT & SHARED)
+   SCREENS
 ═══════════════════════════════════════ */
 function SearchScreen({ pros, go, isDark }: any) {
   const [q, setQ] = useState(''); const [filter, setFilter] = useState('loc');
@@ -324,23 +319,14 @@ function SearchScreen({ pros, go, isDark }: any) {
       <div className="px-4 mt-4 flex flex-col gap-4">
         {filtered.map((p:any) => (
           <button key={p.id} onClick={() => go('pro-detail', p.id)} className={`rounded-2xl shadow-sm border p-3 flex gap-3 items-start text-left ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className="relative">
-              <img src={p.avatarUrl} className="w-24 h-28 rounded-xl object-cover" />
-              {p.verified && <div className="absolute top-1 right-1 rounded-full p-0.5 bg-white"><Icon name="verified" fill size={18} className="text-[#3b82f6]" /></div>}
-            </div>
+            <div className="relative"><img src={p.avatarUrl} className="w-24 h-28 rounded-xl object-cover" />{p.verified && <div className="absolute top-1 right-1 rounded-full p-0.5 bg-white"><Icon name="verified" fill size={18} className="text-[#3b82f6]" /></div>}</div>
             <div className="flex-1 py-1 flex flex-col justify-between h-full">
               <div>
-                <div className="flex justify-between items-start">
-                  <h3 className={`font-bold text-[15px] pr-2 leading-tight ${isDark?'text-white':'text-gray-900'}`}>{p.name}</h3>
-                  <div className="flex items-center text-[#f97316] shrink-0"><Icon name="star" fill size={14} /><span className={`text-sm font-bold ml-1 ${isDark ? 'text-[#e4e4e7]' : 'text-gray-900'}`}>{p.rating.toFixed(1)}</span></div>
-                </div>
+                <div className="flex justify-between items-start"><h3 className={`font-bold text-[15px] pr-2 leading-tight ${isDark?'text-white':'text-gray-900'}`}>{p.name}</h3><div className="flex items-center text-[#f97316] shrink-0"><Icon name="star" fill size={14} /><span className={`text-sm font-bold ml-1 ${isDark ? 'text-[#e4e4e7]' : 'text-gray-900'}`}>{p.rating.toFixed(1)}</span></div></div>
                 <p className={`text-xs mt-1 leading-snug ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{p.profession}</p>
               </div>
               <div className="mt-3 flex items-end justify-between w-full">
-                <div>
-                  <span className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>A PARTIR DE</span>
-                  <p className={`font-black text-lg ${isDark ? 'text-white' : 'text-[#002a5d]'}`}>R$ {(p.services?.[0]?.price || 100).toFixed(0)}<span className={`text-[10px] font-normal ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>/visita</span></p>
-                </div>
+                <div><span className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>A PARTIR DE</span><p className={`font-black text-lg ${isDark ? 'text-white' : 'text-[#002a5d]'}`}>R$ {(p.services?.[0]?.price || 100).toFixed(0)}<span className={`text-[10px] font-normal ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>/visita</span></p></div>
                 <span className={`px-4 py-2 rounded-lg font-bold text-xs ${isDark ? 'text-black bg-[#f97316]' : 'text-[#603100] bg-[#fd8b00]'}`}>Ver Perfil</span>
               </div>
             </div>
@@ -356,50 +342,25 @@ function ProfileScreen({ user, go, logout, isDark, toggleDarkMode }: any) {
   return (
     <div className="px-4 py-6 pb-8">
       <div className="flex flex-col items-center mb-8">
-        <div className="relative mb-4">
-          <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.avatarInitial}&background=random`} className={`w-24 h-24 rounded-full border-4 shadow-md object-cover ${isDark ? 'border-[#18181b]' : 'border-white'}`} />
-          <button className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center border-2 shadow-sm ${isDark ? 'bg-[#60a5fa] text-[#18181b] border-[#18181b]' : 'bg-[#003f87] text-white border-white'}`}><Icon name="edit" size={16} /></button>
-        </div>
+        <div className="relative mb-4"><img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.avatarInitial}&background=random`} className={`w-24 h-24 rounded-full border-4 shadow-md object-cover ${isDark ? 'border-[#18181b]' : 'border-white'}`} /><button className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center border-2 shadow-sm ${isDark ? 'bg-[#60a5fa] text-[#18181b] border-[#18181b]' : 'bg-[#003f87] text-white border-white'}`}><Icon name="edit" size={16} /></button></div>
         <h2 className="font-black text-2xl mb-1">{user.name} <span className="text-sm font-normal text-gray-500">({user.role === 'professional' ? 'Profissional' : 'Cliente'})</span></h2>
         <p className={`text-sm flex items-center gap-1 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}><Icon name="mail" size={16} /> {user.email}</p>
       </div>
-
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-          <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#dbeafe] text-[#2563eb]' : 'bg-[#d7e2ff] text-[#003f87]'}`}><Icon name="location_on" fill size={24} /></div>
-          <span className="font-bold text-[15px]">Endereços</span>
-        </button>
-        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-          <div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#ffedd5] text-[#ea580c]' : 'bg-[#ffedd5] text-[#c2410c]'}`}><Icon name="credit_card" fill size={24} /></div>
-          <span className="font-bold text-[15px]">Pagamentos</span>
-        </button>
+        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#dbeafe] text-[#2563eb]' : 'bg-[#d7e2ff] text-[#003f87]'}`}><Icon name="location_on" fill size={24} /></div><span className="font-bold text-[15px]">Endereços</span></button>
+        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#ffedd5] text-[#ea580c]' : 'bg-[#ffedd5] text-[#c2410c]'}`}><Icon name="credit_card" fill size={24} /></div><span className="font-bold text-[15px]">Pagamentos</span></button>
         {user.role === 'client' && (
-          <button onClick={()=>go('favorites')} className={`col-span-2 flex items-center justify-between p-5 rounded-2xl border shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-[#86efac] text-[#14532d]' : 'bg-[#86efac] text-[#14532d]'}`}><Icon name="favorite" fill size={24} /></div>
-              <div><span className="font-bold text-base block">Favoritos</span><span className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Prestadores salvos</span></div>
-            </div>
-            <Icon name="chevron_right" className={isDark ? 'text-[#a1a1aa]' : 'text-gray-400'} />
-          </button>
+          <button onClick={()=>go('favorites')} className={`col-span-2 flex items-center justify-between p-5 rounded-2xl border shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-[#86efac] text-[#14532d]' : 'bg-[#86efac] text-[#14532d]'}`}><Icon name="favorite" fill size={24} /></div><div><span className="font-bold text-base block">Favoritos</span><span className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Prestadores salvos</span></div></div><Icon name="chevron_right" className={isDark ? 'text-[#a1a1aa]' : 'text-gray-400'} /></button>
         )}
       </div>
-
       <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-        <button onClick={toggleDarkMode} className={`w-full flex items-center justify-between p-5 border-b transition-colors ${isDark ? 'border-[#3f3f46] hover:bg-[#3f3f46]' : 'border-[#e5e7eb] hover:bg-gray-50'}`}>
-          <div className="flex items-center gap-4"><Icon name={isDark ? "light_mode" : "dark_mode"} className={isDark ? 'text-white' : 'text-gray-600'} /><span className="font-bold text-[15px]">Modo {isDark?'Claro':'Escuro'}</span></div>
-          <div className={`w-10 h-6 rounded-full flex items-center px-1 ${isDark ? 'bg-[#60a5fa] justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-sm"/></div>
-        </button>
-        <button onClick={logout} className={`w-full flex items-center gap-4 p-5 transition-colors ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}>
-          <Icon name="logout" className={isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'} /><span className={`font-bold text-[15px] ${isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'}`}>Sair da Conta</span>
-        </button>
+        <button onClick={toggleDarkMode} className={`w-full flex items-center justify-between p-5 border-b transition-colors ${isDark ? 'border-[#3f3f46] hover:bg-[#3f3f46]' : 'border-[#e5e7eb] hover:bg-gray-50'}`}><div className="flex items-center gap-4"><Icon name={isDark ? "light_mode" : "dark_mode"} className={isDark ? 'text-white' : 'text-gray-600'} /><span className="font-bold text-[15px]">Modo {isDark?'Claro':'Escuro'}</span></div><div className={`w-10 h-6 rounded-full flex items-center px-1 ${isDark ? 'bg-[#60a5fa] justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-sm"/></div></button>
+        <button onClick={logout} className={`w-full flex items-center gap-4 p-5 transition-colors ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}><Icon name="logout" className={isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'} /><span className={`font-bold text-[15px] ${isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'}`}>Sair da Conta</span></button>
       </div>
     </div>
   );
 }
 
-/* ═══════════════════════════════════════
-   PRO DASHBOARD SCREENS
-═══════════════════════════════════════ */
 function DashboardProScreen({ user, isDark, go }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const pending = apts.filter(a => a.status === 'approved');
@@ -409,26 +370,18 @@ function DashboardProScreen({ user, isDark, go }: any) {
     <div className="p-4 pb-24">
        <h1 className="font-black text-2xl mb-2">Olá, {user.name.split(' ')[0]} 👋</h1>
        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda do dia.</p>
-       
        <div className={`p-6 rounded-3xl mb-8 shadow-md border flex flex-col justify-center items-center text-center ${isDark?'bg-gradient-to-br from-[#27272a] to-[#18181b] border-[#3f3f46]':'bg-gradient-to-br from-[#002a5d] to-[#001a40] border-[#002a5d] text-white'}`}>
          <p className="text-sm font-medium mb-1 opacity-80">Ganhos Totais (Concluídos)</p>
          <h2 className={`font-black text-4xl mb-4 ${isDark?'text-[#f97316]':'text-[#f97316]'}`}>R$ {earned.toFixed(2)}</h2>
          <div className="w-full h-[1px] bg-white/10 mb-4" />
-         <div className="flex justify-between w-full px-4">
-           <div><p className="text-xs opacity-70">Pendentes</p><p className="font-bold text-lg">{pending.length}</p></div>
-           <div><p className="text-xs opacity-70">Concluídos</p><p className="font-bold text-lg">{apts.filter(a=>a.status==='completed').length}</p></div>
-         </div>
+         <div className="flex justify-between w-full px-4"><div><p className="text-xs opacity-70">Pendentes</p><p className="font-bold text-lg">{pending.length}</p></div><div><p className="text-xs opacity-70">Concluídos</p><p className="font-bold text-lg">{apts.filter(a=>a.status==='completed').length}</p></div></div>
        </div>
-
        <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Icon name="calendar_today" size={20}/> Agenda Pendente</h3>
        <div className="flex flex-col gap-4">
          {pending.length === 0 && <p className={`text-center py-6 text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Nenhum serviço agendado no momento.</p>}
          {pending.map(a => (
            <div key={a.id} className={`p-5 rounded-2xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-             <div className="flex justify-between items-start mb-3">
-               <div><p className="font-bold text-lg">{a.clientName}</p><p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{a.serviceTitle}</p></div>
-               <span className="font-black text-[#f97316]">R$ {a.price.toFixed(2)}</span>
-             </div>
+             <div className="flex justify-between items-start mb-3"><div><p className="font-bold text-lg">{a.clientName}</p><p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{a.serviceTitle}</p></div><span className="font-black text-[#f97316]">R$ {a.price.toFixed(2)}</span></div>
              <p className={`text-sm font-medium flex items-center gap-1 mb-4 ${isDark?'text-[#e4e4e7]':'text-gray-700'}`}><Icon name="schedule" size={16}/> {a.date} às {a.time}</p>
              <div className="flex gap-2">
                <button onClick={()=>go('chat-detail', {id: a.clientId, name: a.clientName})} className={`flex-1 py-3 rounded-xl border font-bold text-sm flex items-center justify-center gap-1 ${isDark?'border-[#3f3f46]':'border-[#e5e7eb]'}`}><Icon name="chat" size={16}/> Chat</button>
@@ -445,33 +398,21 @@ function MyServicesScreen({ user, isDark, show }: any) {
   const { services, add, remove } = useServices(user?.id);
   const [adding, setAdding] = useState(false);
   const [t, setT] = useState(''); const [p, setP] = useState('');
-
   return (
     <div className="p-4 pb-24">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-black text-2xl">Meus Serviços</h1>
-        <button onClick={()=>setAdding(!adding)} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center"><Icon name={adding?"close":"add"} /></button>
-      </div>
-
+      <div className="flex justify-between items-center mb-6"><h1 className="font-black text-2xl">Meus Serviços</h1><button onClick={()=>setAdding(!adding)} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center"><Icon name={adding?"close":"add"} /></button></div>
       <AnimatePresence>
         {adding && (
           <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
-            <div className={`p-5 rounded-2xl border ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-              <h3 className="font-bold mb-4">Adicionar Novo Serviço</h3>
-              <input value={t} onChange={e=>setT(e.target.value)} placeholder="Título (ex: Troca de Chuveiro)" className={`w-full p-3 rounded-xl mb-3 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-              <input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Preço (R$)" className={`w-full p-3 rounded-xl mb-4 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-              <button onClick={()=>{ if(t&&p) { add({professionalId:user.id, title:t, price:Number(p)}); setT(''); setP(''); setAdding(false); show('Serviço adicionado!'); } }} className="w-full py-3 rounded-xl font-bold bg-[#f97316] text-black">Salvar Serviço</button>
-            </div>
+            <div className={`p-5 rounded-2xl border ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><h3 className="font-bold mb-4">Adicionar Novo Serviço</h3><input value={t} onChange={e=>setT(e.target.value)} placeholder="Título (ex: Troca de Chuveiro)" className={`w-full p-3 rounded-xl mb-3 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /><input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Preço (R$)" className={`w-full p-3 rounded-xl mb-4 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /><button onClick={()=>{ if(t&&p) { add({professionalId:user.id, title:t, price:Number(p)}); setT(''); setP(''); setAdding(false); show('Serviço adicionado!'); } }} className="w-full py-3 rounded-xl font-bold bg-[#f97316] text-black">Salvar Serviço</button></div>
           </motion.div>
         )}
       </AnimatePresence>
-
       <div className="flex flex-col gap-3">
         {services.length === 0 && !adding && <p className={`text-center py-6 text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem serviços cadastrados. Clique no '+' para adicionar.</p>}
         {services.map(s => (
           <div key={s.id} className={`p-4 rounded-xl border flex justify-between items-center ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-            <div><p className="font-bold">{s.title}</p><p className={`text-sm ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p></div>
-            <button onClick={()=>remove(s.id)} className="p-2 text-red-500"><Icon name="delete" /></button>
+            <div><p className="font-bold">{s.title}</p><p className={`text-sm ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p></div><button onClick={()=>remove(s.id)} className="p-2 text-red-500"><Icon name="delete" /></button>
           </div>
         ))}
       </div>
@@ -479,13 +420,8 @@ function MyServicesScreen({ user, isDark, show }: any) {
   )
 }
 
-/* ═══════════════════════════════════════
-   OTHER SCREENS (Orders, ProDetail, Auth, Chat)
-═══════════════════════════════════════ */
-// ... (The rest of the screens like Orders, ProDetail, Chat are mostly identical but integrated with the new useAppointments and useChat hooks which now work flawlessly with Firebase).
-
 function OrdersScreen({ user, pros, go, isDark }: any) {
-  const { apts } = useAppointments(user?.id, user?.role);
+  const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const [filter, setFilter] = useState('all');
   if (!user) return null;
   const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && a.status === 'approved') || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
@@ -510,7 +446,7 @@ function OrdersScreen({ user, pros, go, isDark }: any) {
             <div key={a.id} className={`rounded-2xl p-4 border-l-[4px] shadow-sm relative ${isDark ? 'bg-[#27272a] border-y-[#3f3f46] border-r-[#3f3f46]' : 'bg-white border-y-[#e5e7eb] border-r-[#e5e7eb]'}`} style={{ borderLeftColor: cfg.border }}>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-3">
-                  {user.role === 'client' && <img src={pro?.avatarUrl} className="w-14 h-14 rounded-lg object-cover" />}
+                  {user.role === 'client' && <img src={pro?.avatarUrl || `https://ui-avatars.com/api/?name=${a.professionalName}&background=random`} className="w-14 h-14 rounded-lg object-cover" />}
                   <div>
                     <h3 className="font-bold text-lg">{user.role==='professional' ? a.clientName : a.professionalName}</h3>
                     <p className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{a.serviceTitle}</p>
@@ -522,6 +458,12 @@ function OrdersScreen({ user, pros, go, isDark }: any) {
                 <p className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{a.date}, {a.time}</p>
                 <span className={`font-black text-lg ${isDark ? 'text-[#60a5fa]' : 'text-[#002a5d]'}`}>R$ {a.price.toFixed(2)}</span>
               </div>
+              {a.status === 'approved' && (
+                <div className="flex gap-2 mt-3">
+                  {user.role === 'client' && <button onClick={()=>updateStatus(a.id, 'cancelled')} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${isDark?'border-[#3f3f46] text-[#fca5a5]':'border-gray-200 text-red-600'}`}>Cancelar</button>}
+                  {user.role === 'professional' && <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 rounded-lg bg-[#4ade80] text-[#14532d] font-bold text-sm">Concluir</button>}
+                </div>
+              )}
             </div>
           )
         })}
@@ -588,17 +530,40 @@ function AuthScreen({ loginWithGoogle, go, onOk, show }: any) {
   );
 }
 
-function ChatListScreen({ go, user, isDark }: any) {
+function ChatListScreen({ user, pros, go, isDark }: any) {
+  const { msgs } = useChat(user?.id);
+  const chatPartners = Array.from(new Set(msgs.map(m => m.senderId === user?.id ? m.receiverId : m.senderId)));
+
   return (
-    <div className="p-4"><div className="flex items-center gap-3 mb-6"><button onClick={()=>go('home')}><Icon name="arrow_back" /></button><h1 className="font-black text-2xl">Mensagens</h1></div><div className="text-center py-10 text-gray-500"><Icon name="forum" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhuma mensagem recente.</p></div></div>
+    <div className="p-4 pb-24">
+      <div className="flex items-center gap-3 mb-6"><button onClick={()=>go('home')}><Icon name="arrow_back" /></button><h1 className="font-black text-2xl">Mensagens</h1></div>
+      {chatPartners.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="forum" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhuma mensagem recente.</p></div>}
+      <div className="flex flex-col gap-2">
+        {chatPartners.map(pid => {
+          const lastMsg = msgs.filter(m => m.participants.includes(pid)).pop();
+          const partnerName = pros.find((p:any) => p.id === pid)?.name || 'Cliente';
+          return (
+            <button key={pid} onClick={()=>go('chat-detail', {id: pid, name: partnerName})} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+              <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-black shrink-0"><Icon name="person" /></div>
+              <div className="flex-1 overflow-hidden">
+                <h3 className="font-bold text-lg">{partnerName}</h3>
+                <p className={`text-sm truncate ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{lastMsg?.text}</p>
+              </div>
+              <Icon name="chevron_right" className={isDark?'text-[#a1a1aa]':'text-gray-400'} />
+            </button>
+          )
+        })}
+      </div>
+    </div>
   );
 }
+
 function ChatDetailScreen({ go, user, chatUser, isDark }: any) {
   const { msgs, send } = useChat(user?.id); const [text, setText] = useState('');
   const chatMsgs = msgs.filter(m => (m.senderId===user.id && m.receiverId===chatUser.id) || (m.senderId===chatUser.id && m.receiverId===user.id));
   return (
     <div className={`flex flex-col h-screen ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-      <header className={`border-b p-4 flex items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}><button onClick={()=>go('pro-detail', chatUser.id)}><Icon name="arrow_back" /></button><h2 className="font-bold">{chatUser.name}</h2></header>
+      <header className={`border-b p-4 flex items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}><button onClick={()=>go('chat-list')}><Icon name="arrow_back" /></button><h2 className="font-bold">{chatUser.name}</h2></header>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {chatMsgs.map(m => ( <div key={m.id} className={`max-w-[80%] rounded-xl p-3 text-sm ${m.senderId === user.id ? 'bg-[#f97316] text-black self-end rounded-br-sm' : (isDark?'bg-[#3f3f46] text-white':'bg-[#e1e3e4] text-[#191c1d]') + ' self-start rounded-bl-sm'}`}>{m.text}</div> ))}
       </div>
