@@ -5,12 +5,13 @@ export interface AppUser {
   name: string;
   email: string;
   phone: string;
-  password?: string;
   role: UserRole;
   avatarInitial: string;
+  avatarUrl?: string;
   profession?: string;
   categoryId?: string;
   cpfCnpj?: string;
+  password?: string;
   createdAt: string;
 }
 
@@ -18,7 +19,26 @@ export interface ProfService {
   id: string;
   professionalId: string;
   title: string;
+  description?: string;
+  category?: string;
   price: number;
+  duration?: number; // duration in minutes
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  profession: string;
+  description: string;
+  categoryId: string;
+  avatarUrl: string;
+  coverUrl: string;
+  rating: number;
+  reviewsCount: number;
+  verified: boolean;
+  activeSubscription: boolean;
+  services: ProfService[];
+  location?: string;
 }
 
 export interface Appointment {
@@ -30,9 +50,26 @@ export interface Appointment {
   price: number;
   date: string;
   time: string;
-  status: 'pending' | 'approved' | 'cancelled';
+  status: 'pending' | 'approved' | 'completed' | 'cancelled';
   clientName: string;
   professionalName: string;
+  createdAt: string;
+  notes?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string; // Material Symbols icon name
+}
+
+export interface Review {
+  id: string;
+  professionalId: string;
+  clientId: string;
+  clientName: string;
+  rating: number;
+  text: string;
   createdAt: string;
 }
 
@@ -43,32 +80,4 @@ export interface AppNotification {
   read: boolean;
   icon: string;
   createdAt: string;
-}
-
-export interface Professional {
-  id: string;
-  name: string;
-  profession: string;
-  categoryId: string;
-  rating: number;
-  reviewsCount: number;
-  avatarUrl: string;
-  coverUrl: string;
-  description: string;
-  verified: boolean;
-  activeSubscription: boolean;
-  portfolio: string[];
-  reviews: Array<{
-    id: string;
-    authorName: string;
-    rating: number;
-    comment: string;
-    date: string;
-  }>;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
 }
