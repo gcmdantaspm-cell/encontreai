@@ -29,7 +29,7 @@ const C = {
    SUPABASE SETUP
 ══════════════════════════════════════════════ */
 const supabaseUrl = 'https://pmtnvpwhjrboozsqntnp.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_n_EpHmoJW_4XXEnScNmu0Q_nAtYrpG3';
 // Se a chave existir, ativa o Supabase de verdade. Se não, usa modo local pra não quebrar o app.
 export const supabase = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
@@ -730,3 +730,4 @@ function DashboardScreen({ user, showToast }: any) {
     </div>
   );
 }
+
