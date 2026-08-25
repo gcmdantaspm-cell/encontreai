@@ -61,6 +61,12 @@ function useAuth() {
     setUser({ ...user, ...updates });
   };
 
+  const updateProfile = async (data: any) => {
+    if(!user) return;
+    await updateDoc(doc(db, 'users', user.id), data);
+    setUser({ ...user, ...data });
+  };
+
   const toggleFavorite = async (proId: string) => {
     if (!user) return;
     const favs = user.favorites || [];
@@ -68,7 +74,7 @@ function useAuth() {
     setUser({ ...user, favorites: newFavs });
     await updateDoc(doc(db, 'users', user.id), { favorites: newFavs });
   };
-  return { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite };
+  return { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile };
 }
 
 function useSearch() {
@@ -81,7 +87,7 @@ function useSearch() {
           id: d.id, name: u.name, profession: u.profession || 'Especialista',
           avatarUrl: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.avatarInitial}&background=random`,
           coverUrl: u.coverUrl || `https://picsum.photos/seed/${d.id}/600/300`,
-          rating: u.rating || 5.0, verified: true, services: []
+          rating: u.rating || 5.0, verified: true, services: [], description: u.description
         } as Professional;
       });
       setPros([...PROFESSIONALS, ...dbPros]);
@@ -154,7 +160,7 @@ function useReviews(pid?: string) {
     getDocs(query(collection(db, 'reviews'), where('professionalId', '==', pid))).then(snap => {
       let data = snap.docs.map(d => ({ ...d.data(), id: d.id } as Review));
       data.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setReviews([...data, ...MOCK_REVIEWS]); // Mix true DB reviews with mock design ones
+      setReviews([...data, ...MOCK_REVIEWS]); 
     });
   }, [pid]);
   return { reviews };
@@ -185,7 +191,7 @@ export default function App() {
   const [selProId, setSelProId] = useState<string | null>(null);
   const [chatUser, setChatUser] = useState<{id:string,name:string}|null>(null);
   
-  const { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite } = useAuth();
+  const { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
   const { pros } = useSearch();
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
@@ -243,7 +249,7 @@ export default function App() {
             {screen === 'dashboard' && <motion.div key="d" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><DashboardProScreen user={user} go={go} isDark={isDark} /></motion.div>}
             {screen === 'my-services' && <motion.div key="ms" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><MyServicesScreen user={user} show={show} isDark={isDark} /></motion.div>}
             {screen === 'orders' && <motion.div key="o" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} /></motion.div>}
-            {screen === 'profile' && <motion.div key="p" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProfileScreen user={user} go={go} logout={() => { logout(); go('home'); }} isDark={isDark} toggleDarkMode={toggleDarkMode} /></motion.div>}
+            {screen === 'profile' && <motion.div key="p" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProfileScreen user={user} go={go} logout={() => { logout(); go('home'); }} isDark={isDark} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} /></motion.div>}
             {screen === 'pro-detail' && selPro && <motion.div key="pd" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProDetailScreen pro={selPro} onBack={() => go('search')} user={user} go={go} show={show} isDark={isDark} toggleFavorite={toggleFavorite} /></motion.div>}
             {screen === 'auth' && <motion.div key="a" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} exit={{opacity:0}}><AuthScreen onOk={() => go('home')} loginWithGoogle={loginWithGoogle} show={show} /></motion.div>}
             {screen === 'chat-list' && <motion.div key="cl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ChatListScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
@@ -312,15 +318,9 @@ function OnboardingScreen({ updateRole, isDark }: any) {
 ═══════════════════════════════════════ */
 function SearchScreen({ pros, go, isDark }: any) {
   const [q, setQ] = useState(''); const [filter, setFilter] = useState('loc');
-  
   let filtered = pros.filter((p:any) => q ? (p.name.toLowerCase().includes(q.toLowerCase()) || p.profession.toLowerCase().includes(q.toLowerCase())) : true);
-
-  if (filter === 'price') {
-    filtered.sort((a:any, b:any) => (a.services?.[0]?.price || 100) - (b.services?.[0]?.price || 100));
-  } else if (filter === 'rate') {
-    filtered = filtered.filter((p:any) => p.rating >= 4.5);
-    filtered.sort((a:any, b:any) => b.rating - a.rating);
-  }
+  if (filter === 'price') { filtered.sort((a:any, b:any) => (a.services?.[0]?.price || 100) - (b.services?.[0]?.price || 100)); } 
+  else if (filter === 'rate') { filtered = filtered.filter((p:any) => p.rating >= 4.5); filtered.sort((a:any, b:any) => b.rating - a.rating); }
 
   return (
     <div className="pb-8">
@@ -360,12 +360,16 @@ function SearchScreen({ pros, go, isDark }: any) {
   );
 }
 
-function ProfileScreen({ user, go, logout, isDark, toggleDarkMode }: any) {
+function ProfileScreen({ user, go, logout, isDark, toggleDarkMode, updateProfile, show }: any) {
+  const [editModal, setEditModal] = useState(false);
   if (!user) return null;
   return (
     <div className="px-4 py-6 pb-8">
       <div className="flex flex-col items-center mb-8">
-        <div className="relative mb-4"><img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.avatarInitial}&background=random`} className={`w-24 h-24 rounded-full border-4 shadow-md object-cover ${isDark ? 'border-[#18181b]' : 'border-white'}`} /><button className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center border-2 shadow-sm ${isDark ? 'bg-[#60a5fa] text-[#18181b] border-[#18181b]' : 'bg-[#003f87] text-white border-white'}`}><Icon name="edit" size={16} /></button></div>
+        <div className="relative mb-4">
+          <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.avatarInitial}&background=random`} className={`w-24 h-24 rounded-full border-4 shadow-md object-cover ${isDark ? 'border-[#18181b]' : 'border-white'}`} />
+          <button onClick={()=>setEditModal(true)} className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center border-2 shadow-sm ${isDark ? 'bg-[#60a5fa] text-[#18181b] border-[#18181b]' : 'bg-[#003f87] text-white border-white'}`}><Icon name="edit" size={16} /></button>
+        </div>
         <h2 className="font-black text-2xl mb-1">{user.name} <span className="text-sm font-normal text-gray-500">({user.role === 'professional' ? 'Profissional' : 'Cliente'})</span></h2>
         <p className={`text-sm flex items-center gap-1 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}><Icon name="mail" size={16} /> {user.email}</p>
       </div>
@@ -380,7 +384,34 @@ function ProfileScreen({ user, go, logout, isDark, toggleDarkMode }: any) {
         <button onClick={toggleDarkMode} className={`w-full flex items-center justify-between p-5 border-b transition-colors ${isDark ? 'border-[#3f3f46] hover:bg-[#3f3f46]' : 'border-[#e5e7eb] hover:bg-gray-50'}`}><div className="flex items-center gap-4"><Icon name={isDark ? "light_mode" : "dark_mode"} className={isDark ? 'text-white' : 'text-gray-600'} /><span className="font-bold text-[15px]">Modo {isDark?'Claro':'Escuro'}</span></div><div className={`w-10 h-6 rounded-full flex items-center px-1 ${isDark ? 'bg-[#60a5fa] justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-sm"/></div></button>
         <button onClick={logout} className={`w-full flex items-center gap-4 p-5 transition-colors ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}><Icon name="logout" className={isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'} /><span className={`font-bold text-[15px] ${isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'}`}>Sair da Conta</span></button>
       </div>
+      <AnimatePresence>{editModal && <EditProfileModal user={user} onClose={()=>setEditModal(false)} onSave={(d:any)=>{updateProfile(d); setEditModal(false); show('Perfil atualizado!');}} isDark={isDark} />}</AnimatePresence>
     </div>
+  );
+}
+
+function EditProfileModal({ user, onClose, onSave, isDark }: any) {
+  const [av, setAv] = useState(user.avatarUrl || '');
+  const [cv, setCv] = useState(user.coverUrl || '');
+  const [desc, setDesc] = useState(user.description || '');
+
+  return (
+    <>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
+        <div className="flex justify-between items-center mb-8"><h2 className="font-black text-2xl">Editar Perfil</h2><button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button></div>
+        <label className="font-bold text-sm mb-2 block">Link da Foto de Perfil (Opcional)</label>
+        <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+        {user.role === 'professional' && (
+          <>
+            <label className="font-bold text-sm mb-2 block">Link da Foto de Capa (Opcional)</label>
+            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+            <label className="font-bold text-sm mb-2 block">Sobre o seu trabalho (Bio)</label>
+            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm min-h-[120px] ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+          </>
+        )}
+        <button onClick={()=>onSave({ avatarUrl: av, coverUrl: cv, description: desc })} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform mt-2">Salvar Alterações</button>
+      </motion.div>
+    </>
   );
 }
 
@@ -454,7 +485,6 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
     });
     await updateDoc(doc(db, 'appointments', reviewModal.id), { reviewed: true });
     
-    // Update pro average rating
     const proRef = doc(db, 'users', reviewModal.professionalId);
     const proSnap = await getDoc(proRef);
     if(proSnap.exists()) {
@@ -464,7 +494,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
       await updateDoc(proRef, { rating: newRating, reviewsCount: newCount });
     }
     
-    updateStatus(reviewModal.id, 'completed'); // refresh local apt state
+    updateStatus(reviewModal.id, 'completed');
     setReviewModal(null);
     show('Avaliação enviada!');
   };
@@ -543,7 +573,14 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         <div className="px-4 -mt-10 relative z-10">
           <h2 className="font-black text-2xl leading-tight mb-1">{pro.name}</h2>
           <p className={`text-base font-semibold ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
-          <div className="mt-5 mb-10"><p className="font-black text-3xl">R$ {svc.price.toFixed(0)}<span className="text-sm font-normal">/visita</span></p></div>
+          <div className="mt-5 mb-8"><p className="font-black text-3xl">R$ {svc.price.toFixed(0)}<span className="text-sm font-normal">/visita</span></p></div>
+          
+          {pro.description && (
+            <div className={`p-5 rounded-2xl mb-8 border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+              <h3 className="font-black text-lg mb-2">Sobre</h3>
+              <p className={`text-sm leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{pro.description}</p>
+            </div>
+          )}
           
           <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="star" fill className="text-[#f97316]"/> Avaliações</h3>
           {reviews.length === 0 ? <p className={`text-sm py-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ainda não há avaliações.</p> : reviews.map((r:any) => (
