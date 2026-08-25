@@ -18,8 +18,8 @@ export const PROFESSIONALS: Professional[] = [
     profession: 'Diarista & Especialista em Organização',
     description: 'Mais de 8 anos de experiência em limpeza residencial e empresarial.',
     categoryId: 'limpeza',
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop',
-    coverUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop',
+    avatarUrl: 'https://i.pravatar.cc/300',
+    coverUrl: 'https://i.pravatar.cc/300',
     portfolio: [
       'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop',
       'https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=400&h=300&fit=crop'
@@ -40,8 +40,8 @@ export const PROFESSIONALS: Professional[] = [
     profession: 'Barbeiro & Visagista Masculino',
     description: 'Cortes modernos degradê, barba na toalha quente e alinhamento.',
     categoryId: 'barbearia',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
-    coverUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600&h=300&fit=crop',
+    avatarUrl: 'https://i.pravatar.cc/300',
+    coverUrl: 'https://i.pravatar.cc/300',
     portfolio: [
       'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=400&h=300&fit=crop',
       'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=400&h=300&fit=crop',
@@ -70,3 +70,4 @@ export const MOCK_COUPONS: Coupon[] = [
 ];
 
 export const MOCK_CHATS: ChatMessage[] = [];
+
