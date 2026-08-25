@@ -23,27 +23,34 @@ const LS = {
 function useAuth() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        const docRef = doc(db, 'users', u.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUser({ ...docSnap.data(), id: u.uid } as AppUser);
+      try {
+        if (u) {
+          const docRef = doc(db, 'users', u.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setUser({ ...docSnap.data(), id: u.uid } as AppUser);
+          } else {
+            const newUser: AppUser = {
+              id: u.uid, name: u.displayName || 'Usuário', email: u.email || '', role: 'pending' as any,
+              avatarInitial: (u.displayName || 'U')[0].toUpperCase(), avatarUrl: u.photoURL || undefined,
+              favorites: [], createdAt: new Date().toISOString()
+            };
+            await setDoc(docRef, newUser);
+            setUser(newUser);
+          }
         } else {
-          const newUser: AppUser = {
-            id: u.uid, name: u.displayName || 'Usuário', email: u.email || '', role: 'pending' as any,
-            avatarInitial: (u.displayName || 'U')[0].toUpperCase(), avatarUrl: u.photoURL || undefined,
-            favorites: [], createdAt: new Date().toISOString()
-          };
-          await setDoc(docRef, newUser);
-          setUser(newUser);
+          setUser(null);
         }
-      } else {
-        setUser(null);
+      } catch (err: any) {
+        console.error("Firebase Error:", err);
+        setAuthError(err.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return unsub;
   }, []);
@@ -74,7 +81,7 @@ function useAuth() {
     setUser({ ...user, favorites: newFavs });
     await updateDoc(doc(db, 'users', user.id), { favorites: newFavs });
   };
-  return { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile };
+  return { user, loading, authError, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile };
 }
 
 function useSearch() {
@@ -191,7 +198,7 @@ export default function App() {
   const [selProId, setSelProId] = useState<string | null>(null);
   const [chatUser, setChatUser] = useState<{id:string,name:string}|null>(null);
   
-  const { user, loading, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
+  const { user, loading, authError, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
   const { pros } = useSearch();
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
@@ -208,6 +215,7 @@ export default function App() {
   }, [user, screen]);
 
   if (loading) return <div className={`min-h-screen flex items-center justify-center font-bold ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>Carregando EncontreAi...</div>;
+  if (authError) return <div className={`min-h-screen flex flex-col p-8 items-center justify-center text-center ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}><Icon name="error" size={64} className="text-red-500 mb-4" /><p className="font-black text-2xl mb-2">Conexão Recusada</p><p className="text-sm font-medium text-red-500 mb-4">{authError}</p><p className="text-xs opacity-70">Verifique se o seu Banco de Dados Firestore está criado no painel do Firebase e se as Regras de Segurança permitem leitura e gravação.</p></div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
 
   const selPro = pros.find(p => p.id === selProId);
