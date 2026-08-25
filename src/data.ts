@@ -1,109 +1,75 @@
-import { Professional, Category } from './types';
+import { Category, Professional } from './types';
 
 export const CATEGORIES: Category[] = [
-  { id: '1', name: 'Manutenção', icon: 'Wrench' },
-  { id: '2', name: 'Beleza', icon: 'Scissors' },
-  { id: '3', name: 'Limpeza', icon: 'Sparkles' },
-  { id: '4', name: 'Tecnologia', icon: 'Laptop' },
-  { id: '5', name: 'Aulas', icon: 'GraduationCap' },
-  { id: '6', name: 'Fretes', icon: 'Truck' },
+  { id: 'c1', name: 'Limpeza', icon: 'Sparkles' },
+  { id: 'c2', name: 'Reformas', icon: 'Hammer' },
+  { id: 'c3', name: 'Tecnologia', icon: 'Monitor' },
+  { id: 'c4', name: 'Barbearia', icon: 'Scissors' },
+  { id: 'c5', name: 'Estética', icon: 'Flower2' },
+  { id: 'c6', name: 'Sobrancelhas', icon: 'Eye' },
+  { id: 'c7', name: 'Fretes', icon: 'Truck' },
+  { id: 'c8', name: 'Montagem', icon: 'Wrench' },
 ];
 
 export const PROFESSIONALS: Professional[] = [
   {
     id: 'p1',
-    name: 'Carlos Silva',
-    profession: 'Eletricista Residencial',
-    rating: 4.8,
+    name: 'Maria Silva',
+    profession: 'Diarista Especializada',
+    categoryId: 'c1',
+    rating: 5.0,
     reviewsCount: 124,
+    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=150&h=150',
+    coverUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=600&h=300',
+    description: 'Especialista em limpeza profunda e organização de ambientes. Mais de 5 anos transformando lares.',
     verified: true,
     activeSubscription: true,
-    avatarUrl: 'https://i.pravatar.cc/150?u=carlos',
-    coverUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop',
-    description: 'Eletricista com mais de 10 anos de experiência. Especialista em instalações, reparos e projetos elétricos residenciais. Atendimento rápido e com garantia de segurança.',
-    portfolio: [
-      'https://images.unsplash.com/photo-1544724569-5f546fd6f2b6?q=80&w=600&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=600&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=600&auto=format&fit=crop',
-    ],
-    reviews: [
-      { id: 'r1', authorName: 'Mariana Costa', rating: 5, comment: 'Excelente profissional, resolveu o problema do quadro de luz rapidamente.', date: 'Há 2 dias' },
-      { id: 'r2', authorName: 'João Pedro', rating: 4, comment: 'Muito bom, mas chegou um pouco atrasado. O serviço foi impecável.', date: 'Há 1 semana' }
-    ]
+    portfolio: [],
+    reviews: []
   },
   {
     id: 'p2',
-    name: 'Ana Souza',
-    profession: 'Designer de Sobrancelhas',
-    rating: 5.0,
+    name: 'Carlos Mendes',
+    profession: 'Eletricista Residencial',
+    categoryId: 'c2',
+    rating: 4.9,
     reviewsCount: 89,
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150&h=150',
+    coverUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=600&h=300',
+    description: 'Instalações elétricas seguras, troca de fiação e quadros de força.',
     verified: true,
     activeSubscription: true,
-    avatarUrl: 'https://i.pravatar.cc/150?u=ana',
-    coverUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1974&auto=format&fit=crop',
-    description: 'Especialista em Micropigmentação e Design de sobrancelhas. Transformando olhares com naturalidade e técnica avançada.',
-    portfolio: [
-      'https://images.unsplash.com/photo-1512496015851-a1c8bc2611e9?q=80&w=600&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?q=80&w=600&auto=format&fit=crop',
-    ],
-    reviews: [
-      { id: 'r3', authorName: 'Beatriz Lima', rating: 5, comment: 'Amei o resultado! Muito caprichosa e detalhista.', date: 'Há 3 dias' }
-    ]
+    portfolio: [],
+    reviews: []
   },
   {
     id: 'p3',
-    name: 'Roberto Nunes',
-    profession: 'Encanador',
-    rating: 4.6,
+    name: 'Ana Costa',
+    profession: 'Design de Sobrancelhas',
+    categoryId: 'c6',
+    rating: 5.0,
     reviewsCount: 210,
-    verified: false,
+    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150&h=150',
+    coverUrl: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&q=80&w=600&h=300',
+    description: 'Especialista em micropigmentação e design natural. Valorize seu olhar!',
+    verified: true,
     activeSubscription: true,
-    avatarUrl: 'https://i.pravatar.cc/150?u=roberto',
-    coverUrl: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2000&auto=format&fit=crop',
-    description: 'Serviços hidráulicos em geral. Caça-vazamentos, desentupimentos e instalação de tubulações. Atendimento rápido e eficiente.',
-    portfolio: [
-      'https://images.unsplash.com/photo-1585644192666-3d239c05e197?q=80&w=600&auto=format&fit=crop'
-    ],
-    reviews: [
-      { id: 'r4', authorName: 'Carlos Eduardo', rating: 4, comment: 'Serviço rápido e sem sujeira. Resolveu o vazamento no mesmo dia.', date: 'Há 1 mês' }
-    ]
+    portfolio: [],
+    reviews: []
   },
   {
     id: 'p4',
-    name: 'Juliana Mendes',
-    profession: 'Suporte de TI',
-    rating: 4.9,
-    reviewsCount: 56,
-    verified: true,
-    activeSubscription: true,
-    avatarUrl: 'https://i.pravatar.cc/150?u=juliana',
-    coverUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop',
-    description: 'Formatação, remoção de vírus, recuperação de dados e configuração de redes Wi-Fi. Atendimento remoto e presencial com horários flexíveis.',
-    portfolio: [
-      'https://images.unsplash.com/photo-1588508065123-287b28e01397?q=80&w=600&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=600&auto=format&fit=crop'
-    ],
-    reviews: [
-      { id: 'r5', authorName: 'Fernando T.', rating: 5, comment: 'Salvou meus arquivos! Super recomendo, muito atenciosa.', date: 'Há 5 dias' }
-    ]
-  },
-  {
-    id: 'p5',
     name: 'Marcos Oliveira',
-    profession: 'Professor de Inglês',
-    rating: 4.7,
-    reviewsCount: 38,
+    profession: 'Barbeiro Clássico',
+    categoryId: 'c4',
+    rating: 4.8,
+    reviewsCount: 45,
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150&h=150',
+    coverUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=600&h=300',
+    description: 'Cortes na tesoura, degradê e barba na toalha quente. Estilo e resenha garantidos.',
     verified: true,
     activeSubscription: true,
-    avatarUrl: 'https://i.pravatar.cc/150?u=marcos',
-    coverUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=80&w=2028&auto=format&fit=crop',
-    description: 'Professor certificado com metodologia comunicativa. Aulas para iniciantes e avançados, focadas em conversação e gramática aplicada.',
-    portfolio: [
-      'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=600&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=600&auto=format&fit=crop',
-    ],
-    reviews: [
-      { id: 'r6', authorName: 'Camila R.', rating: 5, comment: 'Aprendi mais em 2 meses com ele do que em 2 anos de escola!', date: 'Há 1 semana' }
-    ]
+    portfolio: [],
+    reviews: []
   }
 ];
