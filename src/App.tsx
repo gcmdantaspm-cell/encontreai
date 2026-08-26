@@ -357,7 +357,13 @@ function OnboardingScreen({ updateRole, isDark }: any) {
 ═══════════════════════════════════════ */
 function SearchScreen({ pros, go, isDark }: any) {
   const [q, setQ] = useState(''); const [filter, setFilter] = useState('loc');
-  let filtered = pros.filter((p:any) => q ? (p.name.toLowerCase().includes(q.toLowerCase()) || p.profession.toLowerCase().includes(q.toLowerCase())) : true);
+  let filtered = pros.filter((p:any) => {
+    if (!q) return true;
+    const term = q.toLowerCase();
+    if (p.name.toLowerCase().includes(term) || p.profession.toLowerCase().includes(term)) return true;
+    if (p.services && p.services.some((s:any) => s.title.toLowerCase().includes(term) || (s.description && s.description.toLowerCase().includes(term)))) return true;
+    return false;
+  });
   if (filter === 'price') { filtered.sort((a:any, b:any) => (a.services?.[0]?.price || 100) - (b.services?.[0]?.price || 100)); } 
   else if (filter === 'rate') { filtered = filtered.filter((p:any) => p.rating >= 4.5); filtered.sort((a:any, b:any) => b.rating - a.rating); }
 
@@ -866,5 +872,6 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
     </>
   );
 }
+
 
 
