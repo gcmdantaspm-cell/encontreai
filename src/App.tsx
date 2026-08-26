@@ -466,99 +466,104 @@ function DashboardProScreen({ user, isDark, go }: any) {
 }
 
 function MyServicesScreen({ user, isDark, show }: any) {
-    const { services, add, remove } = useServices(user?.id);
-    const [adding, setAdding] = useState(false);
-    
-    // Form state
-    const [t, setT] = useState(''); 
-    const [p, setP] = useState('');
-    const [desc, setDesc] = useState('');
-    const [cat, setCat] = useState('');
-    const [dur, setDur] = useState('');
-    
-    const resetForm = () => { setT(''); setP(''); setDesc(''); setCat(''); setDur(''); };
+  const { services, add, remove } = useServices(user?.id);
+  const [adding, setAdding] = useState(false);
+  
+  const [t, setT] = useState(''); 
+  const [p, setP] = useState('');
+  const [desc, setDesc] = useState('');
+  const [cat, setCat] = useState('');
+  const [dur, setDur] = useState('');
+  const [img, setImg] = useState('');
+  
+  const resetForm = () => { setT(''); setP(''); setDesc(''); setCat(''); setDur(''); setImg(''); };
 
-    const handleSave = () => {
-      if(t && p && cat) { 
-        add({
-          title: t, 
-          price: Number(p), 
-          description: desc,
-          categoryId: cat,
-          duration: dur
-        }); 
-        resetForm();
-        setAdding(false); 
-        show('Serviço adicionado!'); 
-      }
-    };
+  const handleSave = () => {
+    if(t && p && cat) { 
+      add({
+        title: t, 
+        price: Number(p), 
+        description: desc,
+        categoryId: cat,
+        duration: dur,
+        imageUrl: img
+      }); 
+      resetForm();
+      setAdding(false); 
+      show('Serviço adicionado!'); 
+    }
+  };
 
-    return (
-      <div className="p-4 pb-24">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="font-black text-2xl">Meus Serviços</h1>
-          <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
-        </div>
-        <AnimatePresence>
-          {adding && (
-            <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
-              <div className={`p-5 rounded-3xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-                <h3 className="font-black text-lg mb-4">Adicionar Novo Serviço</h3>
-                
-                <label className="text-xs font-bold mb-1 block opacity-70">Título do Serviço *</label>
-                <input value={t} onChange={e=>setT(e.target.value)} placeholder="Ex: Manutenção de Ar Condicionado" className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-                
-                <label className="text-xs font-bold mb-1 block opacity-70">Categoria *</label>
-                <select value={cat} onChange={e=>setCat(e.target.value)} className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium appearance-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-                  <option value="">Selecione uma categoria...</option>
-                  {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                <label className="text-xs font-bold mb-1 block opacity-70">Preço (R$) *</label>
-                <input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Ex: 150" className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-                
-                <label className="text-xs font-bold mb-1 block opacity-70">Duração Estimada (Opcional)</label>
-                <input value={dur} onChange={e=>setDur(e.target.value)} placeholder="Ex: 2 horas, 1 dia..." className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-
-                <label className="text-xs font-bold mb-1 block opacity-70">Descrição Detalhada (Opcional)</label>
-                <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Descreva o que está incluso no serviço..." rows={3} className={`w-full p-3.5 rounded-xl mb-6 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-                
-                <button disabled={!t || !p || !cat} onClick={handleSave} className="w-full py-4 rounded-2xl font-black bg-[#f97316] text-black disabled:opacity-50 active:scale-95 transition-transform">Salvar Serviço</button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <div className="flex flex-col gap-4">
-          {services.length === 0 && !adding && (
-             <div className={`text-center py-10 px-6 rounded-3xl border-2 border-dashed ${isDark?'border-[#3f3f46]':'border-[#d1d5db]'}`}>
-               <Icon name="post_add" size={48} className="mx-auto mb-3 opacity-30" />
-               <p className={`text-sm font-medium ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem serviços cadastrados. <br/>Clique no '+' para criar o seu primeiro anúncio.</p>
-             </div>
-          )}
-          {services.map(s => {
-            const catObj = CATEGORIES.find((c:any) => c.id === s.categoryId);
-            return (
-              <div key={s.id} className={`p-5 rounded-3xl border flex flex-col gap-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      {catObj && <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase ${isDark?'bg-[#3f3f46] text-[#a1a1aa]':'bg-gray-100 text-gray-500'}`}>{catObj.name}</span>}
-                      {s.duration && <span className={`text-[10px] font-bold flex items-center gap-1 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`}><Icon name="schedule" size={12}/> {s.duration}</span>}
-                    </div>
-                    <p className="font-bold text-lg leading-tight mb-1">{s.title}</p>
-                    <p className={`text-xl font-black ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p>
-                  </div>
-                  <button onClick={()=>remove(s.id)} className="p-2.5 text-red-500 bg-red-50 dark:bg-red-500/10 rounded-full active:scale-95 transition-transform"><Icon name="delete" size={20} /></button>
-                </div>
-                {s.description && <p className={`text-sm mt-1 line-clamp-3 leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.description}</p>}
-              </div>
-            );
-          })}
-        </div>
+  return (
+    <div className="p-4 pb-24">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-black text-2xl">Meus Serviços</h1>
+        <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
       </div>
-    )
-  }
+      <AnimatePresence>
+        {adding && (
+          <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
+            <div className={p-5 rounded-3xl border shadow-sm }>
+              <h3 className="font-black text-lg mb-4">Adicionar Novo Serviço</h3>
+              
+              <label className="text-xs font-bold mb-1 block opacity-70">Título do Serviço *</label>
+              <input value={t} onChange={e=>setT(e.target.value)} placeholder="Ex: Manutenção de Ar Condicionado" className={w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium } />
+              
+              <label className="text-xs font-bold mb-1 block opacity-70">Categoria *</label>
+              <select value={cat} onChange={e=>setCat(e.target.value)} className={w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium appearance-none }>
+                <option value="">Selecione uma categoria...</option>
+                {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+
+              <label className="text-xs font-bold mb-1 block opacity-70">Preço (R$) *</label>
+              <input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Ex: 150" className={w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium } />
+              
+              <label className="text-xs font-bold mb-1 block opacity-70">Duração Estimada (Opcional)</label>
+              <input value={dur} onChange={e=>setDur(e.target.value)} placeholder="Ex: 2 horas, 1 dia..." className={w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium } />
+
+              <label className="text-xs font-bold mb-1 block opacity-70">Link da Foto (Opcional)</label>
+              <input value={img} onChange={e=>setImg(e.target.value)} placeholder="https://..." className={w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium } />
+
+              <label className="text-xs font-bold mb-1 block opacity-70">Descrição Detalhada (Opcional)</label>
+              <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Descreva o que está incluso no serviço..." rows={3} className={w-full p-3.5 rounded-xl mb-6 border outline-none text-sm font-medium } />
+              
+              <button disabled={!t || !p || !cat} onClick={handleSave} className="w-full py-4 rounded-2xl font-black bg-[#f97316] text-black disabled:opacity-50 active:scale-95 transition-transform">Salvar Serviço</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <div className="flex flex-col gap-4">
+        {services.length === 0 && !adding && (
+           <div className={	ext-center py-10 px-6 rounded-3xl border-2 border-dashed }>
+             <Icon name="post_add" size={48} className="mx-auto mb-3 opacity-30" />
+             <p className={	ext-sm font-medium }>Você ainda não tem serviços cadastrados. <br/>Clique no '+' para criar o seu primeiro anúncio.</p>
+           </div>
+        )}
+        {services.map((s:any) => {
+          const catObj = CATEGORIES.find((c:any) => c.id === s.categoryId);
+          return (
+            <div key={s.id} className={p-5 rounded-3xl border flex flex-col gap-3 shadow-sm }>
+              {s.imageUrl && <img src={s.imageUrl} className="w-full h-32 object-cover rounded-xl mb-2" />}
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {catObj && <span className={	ext-[10px] font-bold px-2.5 py-1 rounded-md uppercase }>{catObj.name}</span>}
+                    {s.duration && <span className={	ext-[10px] font-bold flex items-center gap-1 }><Icon name="schedule" size={12}/> {s.duration}</span>}
+                  </div>
+                  <p className="font-bold text-lg leading-tight mb-1">{s.title}</p>
+                  <p className={	ext-xl font-black }>R$ {s.price.toFixed(2)}</p>
+                </div>
+                <button onClick={()=>remove(s.id)} className="p-2.5 text-red-500 bg-red-50 dark:bg-red-500/10 rounded-full active:scale-95 transition-transform"><Icon name="delete" size={20} /></button>
+              </div>
+              {s.description && <p className={	ext-sm mt-1 line-clamp-3 leading-relaxed }>{s.description}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  )
+}
 
 function OrdersScreen({ user, pros, go, isDark, show }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
@@ -643,49 +648,76 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
 function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }: any) {
   const { services } = useServices(pro.id);
   const { reviews } = useReviews(pro.id);
-  const svc = services[0] || { id: 's1', price: 120, title: pro.profession };
-  const [bookModal, setBookModal] = useState(false);
+  const [bookModal, setBookModal] = useState<any>(null); // holds the selected service object
   const { add } = useAppointments(user?.id, user?.role);
   const isFav = user?.favorites?.includes(pro.id);
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+    <div className={min-h-screen flex flex-col }>
       <header className="absolute top-0 w-full z-50 flex items-center justify-between px-4 py-3">
         <button onClick={onBack} className="p-2 rounded-full bg-black/20 backdrop-blur-sm text-white"><Icon name="arrow_back" /></button>
         <button onClick={() => { if(!user) go('auth'); else toggleFavorite(pro.id); }} className="p-2 rounded-full bg-black/20 backdrop-blur-sm"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'} /></button>
       </header>
       <div className="flex-1 overflow-y-auto pb-32">
-        <div className="relative w-full h-80"><img src={pro.coverUrl} className="w-full h-full object-cover" /><div className={`absolute inset-0 bg-gradient-to-t ${isDark ? 'from-[#18181b] to-transparent' : 'from-[#f8f9fa] to-transparent'}`} /></div>
+        <div className="relative w-full h-80"><img src={pro.coverUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full object-cover" /><div className={bsolute inset-0 bg-gradient-to-t } /></div>
         <div className="px-4 -mt-10 relative z-10">
           <h2 className="font-black text-2xl leading-tight mb-1">{pro.name}</h2>
-          <p className={`text-base font-semibold ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
-          <div className="mt-5 mb-8"><p className="font-black text-3xl">R$ {svc.price.toFixed(0)}<span className="text-sm font-normal">/visita</span></p></div>
+          <p className={	ext-base font-semibold }>{pro.profession}</p>
+          
+          <div className="flex items-center gap-4 mt-3 mb-6">
+            <span className="flex items-center gap-1 font-bold"><Icon name="star" size={18} className="text-[#f97316]" fill/> {pro.rating.toFixed(1)} <span className="opacity-50 font-normal">({pro.reviewsCount})</span></span>
+            {pro.region && <span className="flex items-center gap-1 text-sm opacity-70"><Icon name="location_on" size={16}/> {pro.region}</span>}
+          </div>
           
           {pro.description && (
-            <div className={`p-5 rounded-2xl mb-8 border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-              <h3 className="font-black text-lg mb-2">Sobre</h3>
-              <p className={`text-sm leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{pro.description}</p>
+            <div className={p-5 rounded-3xl mb-8 border shadow-sm }>
+              <h3 className="font-black text-lg mb-2">Sobre o Profissional</h3>
+              <p className={	ext-sm leading-relaxed }>{pro.description}</p>
             </div>
           )}
           
+          <h3 className="font-black text-xl mb-4">Serviços Disponíveis</h3>
+          <div className="flex flex-col gap-4 mb-8">
+            {services.length === 0 ? (
+              <p className={	ext-sm py-4 }>Nenhum serviço cadastrado.</p>
+            ) : (
+              services.map((s:any) => (
+                <div key={s.id} className={p-4 rounded-3xl border flex flex-col shadow-sm }>
+                  {s.imageUrl && <img src={s.imageUrl} className="w-full h-32 object-cover rounded-xl mb-3" />}
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <p className="font-bold text-lg leading-tight mb-1">{s.title}</p>
+                      {s.duration && <span className={	ext-[11px] font-bold flex items-center gap-1 mb-2 }><Icon name="schedule" size={12}/> {s.duration}</span>}
+                      <p className={	ext-lg font-black }>R$ {s.price.toFixed(2)}</p>
+                    </div>
+                    <button onClick={() => { if(!user) go('auth'); else setBookModal(s); }} className="px-4 py-2 rounded-xl font-bold text-sm bg-[#f97316] text-black active:scale-95 transition-transform shrink-0">Agendar</button>
+                  </div>
+                  {s.description && <p className={	ext-sm mt-3 leading-relaxed }>{s.description}</p>}
+                </div>
+              ))
+            )}
+          </div>
+          
           <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="star" fill className="text-[#f97316]"/> Avaliações</h3>
-          {reviews.length === 0 ? <p className={`text-sm py-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ainda não há avaliações.</p> : reviews.map((r:any) => (
-             <div key={r.id} className={`p-4 rounded-xl border mb-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-               <div className="flex items-center gap-1 mb-2 text-[#f97316]"><Icon name="star" fill size={16}/> <span className={`font-bold text-sm ${isDark?'text-white':'text-black'}`}>{r.rating.toFixed(1)}</span></div>
-               <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{r.text || 'Sem comentário.'}</p>
-               <p className={`text-xs mt-3 font-bold ${isDark?'text-gray-500':'text-gray-400'}`}>{r.clientName}</p>
+          {reviews.length === 0 ? <p className={	ext-sm py-4 }>Ainda não há avaliações.</p> : reviews.map((r:any) => (
+             <div key={r.id} className={p-4 rounded-xl border mb-3 shadow-sm }>
+               <div className="flex items-center gap-1 mb-2 text-[#f97316]"><Icon name="star" fill size={16}/> <span className={ont-bold text-sm }>{r.rating.toFixed(1)}</span></div>
+               <p className={	ext-sm }>{r.text || 'Sem comentário.'}</p>
+               <p className={	ext-xs mt-3 font-bold }>{r.clientName}</p>
              </div>
           ))}
         </div>
       </div>
-      <div className={`fixed bottom-0 w-full max-w-[448px] p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
+      <div className={ixed bottom-0 w-full max-w-[448px] p-4 pt-8 z-40 bg-gradient-to-t  to-transparent pointer-events-none}>
         <div className="flex gap-2 pointer-events-auto">
-          <button onClick={() => { if(!user) go('auth'); else go('chat-detail', {id: pro.id, name: pro.name}); }} className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#60a5fa]':'bg-white border-[#e5e7eb] text-[#002a5d]'}`}><Icon name="chat" size={24} /></button>
-          <button onClick={() => { if(!user) go('auth'); else setBookModal(true); }} className="flex-1 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">Agendar</button>
+          <button onClick={() => { if(!user) go('auth'); else go('chat-detail', {id: pro.id, name: pro.name}); }} className={w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm }><Icon name="chat" size={24} /></button>
+          <button onClick={() => { if(!user) go('auth'); else if (services.length > 0) setBookModal(services[0]); }} className="flex-1 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">Agendar Principal</button>
         </div>
       </div>
       <AnimatePresence>
-        {bookModal && <BookingModal svc={svc} onClose={()=>setBookModal(false)} onBook={(d:string, t:string) => { add({ professionalId: pro.id, clientId: user.id, serviceId: svc.id, serviceTitle: svc.title, price: svc.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name }); setBookModal(false); show('Agendado com sucesso!'); go('orders'); }} isDark={isDark} />}
+        {bookModal && <BookingModal svc={bookModal} onClose={()=>setBookModal(null)} onBook={(d:string, t:string) => { 
+add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name }); setBookModal(null); 
+show('Agendado com sucesso!'); go('orders'); }} isDark={isDark} />}
       </AnimatePresence>
     </div>
   );
@@ -834,3 +866,5 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
     </>
   );
 }
+
+

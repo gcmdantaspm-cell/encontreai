@@ -22,6 +22,7 @@ export interface ProfService {
   categoryId?: string;
   duration?: string; // e.g. "2 horas", "Em até 3 dias"
   price: number;
+  imageUrl?: string; // Foto do produto ou serviço
 }
 
 export interface Professional extends AppUser {
