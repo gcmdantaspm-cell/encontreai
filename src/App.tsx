@@ -431,7 +431,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
     <div className="pb-8">
       <div className={`px-4 pt-6 pb-4 rounded-b-[2.5rem] shadow-sm relative z-10 ${isDark?'bg-[#27272a]':'bg-white'}`}>
         <p className="font-medium opacity-60 text-sm mb-1">Busque por serviços</p>
-        <h1 className="font-black text-2xl mb-4">O que você precisa?</h1>
+        <h1 className="font-black text-2xl mb-4">O que você precisa hoje?</h1>
         <div className={`flex items-center p-1 rounded-2xl border shadow-sm ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
           <Icon name="search" className={`ml-3 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="flex-1 bg-transparent p-3 outline-none text-sm font-bold placeholder-opacity-50" />
