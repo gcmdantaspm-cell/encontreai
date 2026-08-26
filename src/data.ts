@@ -15,6 +15,11 @@ export const PROFESSIONALS: Professional[] = [
   {
     id: 'p1',
     name: 'Maria Silva',
+    email: 'maria@example.com',
+    role: 'professional',
+    avatarInitial: 'M',
+    favorites: [],
+    createdAt: new Date().toISOString(),
     profession: 'Diarista & Especialista em Organização',
     description: 'Mais de 8 anos de experiência em limpeza residencial e empresarial.',
     categoryId: 'limpeza',
@@ -30,13 +35,18 @@ export const PROFESSIONALS: Professional[] = [
     activeSubscription: true,
     location: 'São Paulo, SP',
     services: [
-      { id: 's1-1', professionalId: 'p1', title: 'Faxina Completa', category: 'Limpeza', price: 180, duration: 240 },
-      { id: 's1-2', professionalId: 'p1', title: 'Limpeza Pós-Obra', category: 'Limpeza', price: 320, duration: 360 },
+      { id: 's1-1', professionalId: 'p1', title: 'Faxina Completa', categoryId: 'Limpeza', price: 180, duration: '240' },
+      { id: 's1-2', professionalId: 'p1', title: 'Limpeza Pós-Obra', categoryId: 'Limpeza', price: 320, duration: '360' },
     ],
   },
   {
     id: 'p4',
     name: 'Lucas Ferreira',
+    email: 'lucas@example.com',
+    role: 'professional',
+    avatarInitial: 'L',
+    favorites: [],
+    createdAt: new Date().toISOString(),
     profession: 'Barbeiro & Visagista Masculino',
     description: 'Cortes modernos degradê, barba na toalha quente e alinhamento.',
     categoryId: 'barbearia',
@@ -53,8 +63,8 @@ export const PROFESSIONALS: Professional[] = [
     activeSubscription: true,
     location: 'Curitiba, PR',
     services: [
-      { id: 's4-1', professionalId: 'p4', title: 'Corte Degradê Fade', category: 'Barbearia', price: 50, duration: 40 },
-      { id: 's4-2', professionalId: 'p4', title: 'Barboterapia', category: 'Barbearia', price: 45, duration: 35 },
+      { id: 's4-1', professionalId: 'p4', title: 'Corte Degradê Fade', categoryId: 'Barbearia', price: 50, duration: '40' },
+      { id: 's4-2', professionalId: 'p4', title: 'Barboterapia', categoryId: 'Barbearia', price: 45, duration: '35' },
     ],
   }
 ];

@@ -4,14 +4,13 @@ export interface AppUser {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   role: UserRole;
   avatarInitial: string;
   avatarUrl?: string;
   favorites: string[];
   createdAt: string;
   cpfCnpj?: string;
-  phone?: string;
   region?: string;
 }
 
@@ -34,6 +33,8 @@ export interface Professional extends AppUser {
   description: string;
   categoryId: string;
   coverUrl?: string;
+  portfolio?: string[];
+  location?: string;
   rating: number;
   reviewsCount: number;
   verified: boolean;

@@ -163,7 +163,7 @@ function useAppointments(uid?: string, role?: string) {
     const field = role === 'professional' ? 'professionalId' : 'clientId';
     const snap = await getDocs(query(collection(db, 'appointments'), where(field, '==', uid)));
     let data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-    data.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setApts(data);
   }, [uid, role]);
   useEffect(() => { load(); }, [load]);
@@ -185,7 +185,7 @@ function useChat(uid?: string) {
     if (!uid) return;
     const unsub = onSnapshot(query(collection(db, 'chats'), where('participants', 'array-contains', uid)), (snap) => {
       let data = snap.docs.map(d => ({ ...d.data(), id: d.id } as ChatMessage));
-      data.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      data.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setMsgs(data);
     });
     return unsub;
@@ -203,7 +203,7 @@ function useReviews(pid?: string) {
     if(!pid) return;
     getDocs(query(collection(db, 'reviews'), where('professionalId', '==', pid))).then(snap => {
       let data = snap.docs.map(d => ({ ...d.data(), id: d.id } as Review));
-      data.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setReviews([...data, ...MOCK_REVIEWS]); 
     });
   }, [pid]);
@@ -651,6 +651,14 @@ function DashboardProScreen({ user, isDark, go }: any) {
        </div>
     </div>
   )
+}
+
+function NewServiceScreen({ user, isDark, show }: any) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate('/meus-servicos');
+  }, [navigate]);
+  return null;
 }
 
 function MyServicesScreen({ user, isDark, show }: any) {
