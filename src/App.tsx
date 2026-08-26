@@ -230,105 +230,124 @@ function useToast() {
 /* ═══════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════ */
+export const RoleContext = createContext<any>(null);
+
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('home');
-  const [selProId, setSelProId] = useState<string | null>(null);
-  const [chatUser, setChatUser] = useState<{id:string,name:string}|null>(null);
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  )
+}
+
+function ProtectedRoute({ allowedRole, children }: any) {
+  const { currentRole } = useContext(RoleContext);
+  if (currentRole !== allowedRole && currentRole) {
+    return <Navigate to={currentRole === 'client' ? '/busca' : '/agenda'} />;
+  }
+  return children;
+}
+
+function BottomBar({ isDark }: any) {
+  const { currentRole } = useContext(RoleContext);
+  const loc = useLocation();
+  const clientTabs = [
+    { id: '/busca', icon: 'search', label: 'Busca' },
+    { id: '/pedidos', icon: 'receipt_long', label: 'Pedidos' },
+    { id: '/perfil', icon: 'person', label: 'Perfil' }
+  ];
+  const proTabs = [
+    { id: '/agenda', icon: 'calendar_month', label: 'Agenda' },
+    { id: '/meus-servicos', icon: 'work', label: 'Serviços' },
+    { id: '/perfil', icon: 'person', label: 'Perfil' }
+  ];
+  const tabs = currentRole === 'professional' ? proTabs : clientTabs;
   
+  return (
+    <div className={`w-full max-w-[448px] h-20 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+       {tabs.map(t => {
+         const active = loc.pathname.startsWith(t.id);
+         return (
+         <Link to={t.id} key={t.id} className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${active ? 'text-[#f97316]' : (isDark ? 'text-[#a1a1aa]' : 'text-gray-400')}`}>
+           <Icon name={t.icon} fill={active} />
+           <span className="text-[10px] font-bold mt-1">{t.label}</span>
+         </Link>
+       )})}
+    </div>
+  )
+}
+
+function AppContent() {
   const { user, loading, authError, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
   const { pros } = useSearch();
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
+  
+  const [currentRole, setCurrentRole] = useState(user?.role || 'client');
+  useEffect(() => { if (user?.role) setCurrentRole(user.role); }, [user]);
+  
+  const navigate = useNavigate();
+  const loc = useLocation();
 
-  const go = (s: Screen, data?: any) => { 
-    if (s === 'pro-detail') setSelProId(data); 
-    if (s === 'chat-detail') setChatUser(data);
-    setScreen(s); window.scrollTo(0, 0); 
+  // Legacy fallback for components that still expect `go` (we'll update most, but just in case)
+  const go = (s: string, data?: any) => { 
+     const routeMap:any = { 'home':'/busca', 'search':'/busca', 'orders':'/pedidos', 'profile':'/perfil', 'dashboard':'/agenda', 'my-services':'/meus-servicos', 'chat-list':'/chat-list' };
+     if (s === 'pro-detail') navigate(`/servico/${data}`);
+     else if (s === 'chat-detail') navigate(`/chat/${data.id}`);
+     else navigate(routeMap[s] || `/${s}`);
   };
-
-  useEffect(() => {
-    if (user?.role === 'professional' && screen === 'home') setScreen('dashboard');
-    if (user?.role === 'client' && screen === 'dashboard') setScreen('search');
-  }, [user, screen]);
-
+  
   if (loading) return <div className={`min-h-screen flex items-center justify-center font-bold ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>Carregando EncontreAi...</div>;
-  if (authError) return <div className={`min-h-screen flex flex-col p-8 items-center justify-center text-center ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}><Icon name="error" size={64} className="text-red-500 mb-4" /><p className="font-black text-2xl mb-2">Conexão Recusada</p><p className="text-sm font-medium text-red-500 mb-4">{authError}</p><p className="text-xs opacity-70">Verifique se o seu Banco de Dados Firestore está criado no painel do Firebase e se as Regras de Segurança permitem leitura e gravação.</p></div>;
+  if (authError) return <div className={`min-h-screen flex items-center justify-center font-bold text-red-500 bg-[#18181b]`}>{authError}</div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
-
-  const selPro = pros.find(p => p.id === selProId);
-  const hideBottomNav = ['auth', 'chat-detail', 'chat-list'].includes(screen);
-
-  const clientTabs = [
-    { icon: 'search', label: 'Busca', s: 'search' as Screen },
-    { icon: 'receipt_long', label: 'Pedidos', s: 'orders' as Screen },
-    { icon: 'person', label: 'Perfil', s: 'profile' as Screen }
-  ];
-  const proTabs = [
-    { icon: 'dashboard', label: 'Painel', s: 'dashboard' as Screen },
-    { icon: 'work', label: 'Serviços', s: 'my-services' as Screen },
-    { icon: 'receipt_long', label: 'Agenda', s: 'orders' as Screen },
-    { icon: 'person', label: 'Perfil', s: 'profile' as Screen }
-  ];
-  const tabs = user?.role === 'professional' ? proTabs : clientTabs;
-  const activeTab = tabs.findIndex(t => t.s === screen || (t.s === 'search' && screen === 'pro-detail') || (t.s === 'profile' && screen === 'favorites'));
-
+  
+  const hideBottomNav = ['/login', '/cadastro'].includes(loc.pathname) || loc.pathname.startsWith('/servico/') || loc.pathname.startsWith('/chat');
+  
   return (
-    <div className={`flex justify-center min-h-screen ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
-      <div className={`w-full max-w-[448px] min-h-screen relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
-        
-        {!hideBottomNav && screen !== 'pro-detail' && (
-          <header className={`w-full sticky top-0 z-50 border-b flex items-center justify-between px-4 py-3 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
-            <button onClick={() => user ? go('profile') : go('auth')} className={`w-9 h-9 rounded-full border flex items-center justify-center overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-[#f1f3f5]'}`}>
-              {user ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" fill size={20} className={isDark?'text-gray-300':'text-[#002a5d]'} />}
-            </button>
-            <h1 className="font-black text-[24px] tracking-[-0.03em] text-[#002a5d] dark:text-[#60a5fa]">EncontreAi</h1>
-            <button onClick={() => user ? go('chat-list') : go('auth')} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-              <Icon name="chat" size={22} className={isDark ? 'text-white' : 'text-[#191c1d]'} />
-            </button>
-          </header>
-        )}
+    <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
+      <div className={`flex justify-center min-h-screen ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
+        <div className={`w-full max-w-[448px] min-h-screen relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+          
+          {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
+            <header className={`w-full sticky top-0 z-50 border-b flex items-center justify-between px-4 py-3 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+              <button onClick={() => !user ? loginWithGoogle() : null} className={`w-9 h-9 rounded-full border flex items-center justify-center overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-[#f1f3f5]'}`}>
+                {user ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" fill size={20} className={isDark?'text-gray-300':'text-[#002a5d]'} />}
+              </button>
+              <div className="flex gap-2">
+                {user && <Link to="/chat-list" className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#a1a1aa]':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name="chat" size={20} /></Link>}
+                {user && currentRole === 'client' && <button className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#a1a1aa]':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name="favorite" size={20} /></button>}
+                <button onClick={toggleDarkMode} className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-amber-400':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name={isDark?'light_mode':'dark_mode'} size={20} /></button>
+              </div>
+            </header>
+          )}
 
-        <div className="flex-1" style={{ paddingBottom: hideBottomNav ? 0 : 80 }}>
-          <AnimatePresence mode="wait">
-            {(screen === 'home' || screen === 'search') && <motion.div key="s" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><SearchScreen pros={pros} go={go} isDark={isDark} /></motion.div>}
-            {screen === 'dashboard' && <motion.div key="d" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><DashboardProScreen user={user} go={go} isDark={isDark} /></motion.div>}
-            {screen === 'my-services' && <motion.div key="ms" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><MyServicesScreen user={user} show={show} isDark={isDark} /></motion.div>}
-            {screen === 'orders' && <motion.div key="o" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} /></motion.div>}
-            {screen === 'profile' && <motion.div key="p" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProfileScreen user={user} go={go} logout={() => { logout(); go('home'); }} isDark={isDark} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} /></motion.div>}
-            {screen === 'pro-detail' && selPro && <motion.div key="pd" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ProDetailScreen pro={selPro} onBack={() => go('search')} user={user} go={go} show={show} isDark={isDark} toggleFavorite={toggleFavorite} /></motion.div>}
-            {screen === 'auth' && <motion.div key="a" initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} exit={{opacity:0}}><AuthScreen onOk={() => go('home')} loginWithGoogle={loginWithGoogle} show={show} /></motion.div>}
-            {screen === 'chat-list' && <motion.div key="cl" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><ChatListScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
-            {screen === 'chat-detail' && chatUser && <motion.div key="cd" initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} exit={{opacity:0}}><ChatDetailScreen user={user} chatUser={chatUser} go={go} isDark={isDark} /></motion.div>}
-            {screen === 'favorites' && <motion.div key="fav" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><FavoritesScreen user={user} pros={pros} go={go} isDark={isDark} /></motion.div>}
-          </AnimatePresence>
+          <div className="flex-1 overflow-y-auto">
+            <Routes>
+               <Route path="/" element={<Navigate to="/busca" />} />
+               <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
+               <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
+               <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />
+               
+               <Route path="/servico/:id" element={<ServiceDetailScreen pros={pros} user={user} isDark={isDark} show={show} toggleFavorite={toggleFavorite} />} />
+               
+               <Route path="/agenda" element={<ProtectedRoute allowedRole="professional"><DashboardProScreen user={user} isDark={isDark} go={go} /></ProtectedRoute>} />
+               <Route path="/meus-servicos" element={<ProtectedRoute allowedRole="professional"><MyServicesScreen user={user} isDark={isDark} show={show} /></ProtectedRoute>} />
+               <Route path="/novo-servico" element={<ProtectedRoute allowedRole="professional"><NewServiceScreen user={user} isDark={isDark} show={show} /></ProtectedRoute>} />
+               
+               <Route path="/chat-list" element={<ChatListScreen user={user} pros={pros} go={go} isDark={isDark} />} />
+               <Route path="/chat/:id" element={<ChatDetailScreen user={user} go={go} isDark={isDark} />} />
+            </Routes>
+          </div>
+          
+          {!hideBottomNav && <BottomBar isDark={isDark} />}
+          
         </div>
-
-        {!hideBottomNav && (
-          <nav className={`fixed bottom-0 w-full max-w-[448px] z-50 rounded-t-2xl border-t flex justify-around items-center pt-2 pb-5 px-2 transition-colors ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
-            {tabs.map((tab, i) => {
-              const active = activeTab === i;
-              return (
-                <button key={i} onClick={() => { if ((tab.s === 'orders' || tab.s === 'profile' || tab.s === 'my-services') && !user) go('auth'); else go(tab.s); }}
-                  className={`flex flex-col items-center justify-center p-2 px-4 transition-all rounded-full ${active ? (isDark ? 'bg-[#f97316]' : 'bg-[#fd8b00]') : 'bg-transparent'}`}>
-                  <Icon name={tab.icon} fill={active} size={24} className={active ? (isDark ? 'text-black' : 'text-[#603100]') : (isDark ? 'text-[#a1a1aa]' : 'text-gray-600')} />
-                  <span className={`text-[10px] font-bold mt-1 ${active ? (isDark ? 'text-black' : 'text-[#603100]') : (isDark ? 'text-[#a1a1aa]' : 'text-gray-600')}`}>{tab.label}</span>
-                </button>
-              )
-            })}
-          </nav>
-        )}
-
-        <AnimatePresence>
-          {t && <motion.div initial={{opacity:0,y:60}} animate={{opacity:1,y:0}} exit={{opacity:0,y:60}} className={`fixed bottom-28 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-xl text-sm font-bold text-white max-w-[85%] ${t.type === 'error' ? 'bg-[#ba1a1a]' : 'bg-[#191c1d]'}`}>{t.msg}</motion.div>}
-        </AnimatePresence>
       </div>
-    </div>
-  );
+      {t.msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full font-bold shadow-xl z-[999]">{t.msg}</div>}
+    </RoleContext.Provider>
+  )
 }
 
-/* ═══════════════════════════════════════
-   ONBOARDING
-═══════════════════════════════════════ */
 function OnboardingScreen({ updateRole, isDark }: any) {
     const [step, setStep] = useState(1);
     const [prof, setProf] = useState('');
@@ -392,86 +411,212 @@ function OnboardingScreen({ updateRole, isDark }: any) {
 /* ═══════════════════════════════════════
    SCREENS
 ═══════════════════════════════════════ */
-function SearchScreen({ pros, go, isDark }: any) {
-  const [q, setQ] = useState(''); const [filter, setFilter] = useState('loc');
-  let filtered = pros.filter((p:any) => {
+function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
+  const [q, setQ] = useState(''); const [filter, setFilter] = useState('all');
+  
+  const allServices = useMemo(() => {
+    return pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));
+  }, [pros]);
+
+  let filtered = allServices.filter((s:any) => {
     if (!q) return true;
     const term = q.toLowerCase();
-    if (p.name.toLowerCase().includes(term) || p.profession.toLowerCase().includes(term)) return true;
-    if (p.services && p.services.some((s:any) => s.title.toLowerCase().includes(term) || (s.description && s.description.toLowerCase().includes(term)))) return true;
-    return false;
+    return s.title.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term) || s.pro.name.toLowerCase().includes(term) || s.pro.profession.toLowerCase().includes(term);
   });
-  if (filter === 'price') { filtered.sort((a:any, b:any) => (a.services?.[0]?.price || 100) - (b.services?.[0]?.price || 100)); } 
-  else if (filter === 'rate') { filtered = filtered.filter((p:any) => p.rating >= 4.5); filtered.sort((a:any, b:any) => b.rating - a.rating); }
+  
+  if (filter === 'price') { filtered.sort((a:any, b:any) => a.price - b.price); } 
+  else if (filter === 'rate') { filtered.sort((a:any, b:any) => b.pro.rating - a.pro.rating); }
 
   return (
     <div className="pb-8">
-      <div className={`px-4 pt-4 pb-3 sticky top-[57px] z-40 ${isDark ? 'bg-[#18181b]/95' : 'bg-[#f8f9fa]/95'} backdrop-blur-sm border-b ${isDark ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-        <div className="relative mb-4 flex items-center">
-          <Icon name="search" size={22} className={`absolute left-4 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`} />
-          <input value={q} onChange={e => setQ(e.target.value)} className={`w-full pl-12 pr-12 py-3.5 border rounded-full text-sm outline-none ${isDark ? 'bg-[#27272a] border-[#3f3f46] text-white' : 'bg-white border-[#e5e7eb] text-gray-900'}`} placeholder="O que você precisa hoje?" />
-          <button className="absolute right-1 w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black"><Icon name="arrow_forward" size={20}/></button>
+      <div className={`px-4 pt-6 pb-4 rounded-b-[2.5rem] shadow-sm relative z-10 ${isDark?'bg-[#27272a]':'bg-white'}`}>
+        <p className="font-medium opacity-60 text-sm mb-1">Busque por serviços</p>
+        <h1 className="font-black text-2xl mb-4">O que você precisa?</h1>
+        <div className={`flex items-center p-1 rounded-2xl border shadow-sm ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
+          <Icon name="search" className={`ml-3 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="flex-1 bg-transparent p-3 outline-none text-sm font-bold placeholder-opacity-50" />
+          {q && <button onClick={()=>setQ('')} className="mr-3 opacity-50"><Icon name="close" /></button>}
         </div>
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {[{id:'loc', l:'Localização', i:'location_on'}, {id:'price', l:'Menor Preço', i:'payments'}, {id:'rate', l:'Avaliação 4.5+', i:'star'}].map(f => (
-            <button key={f.id} onClick={() => setFilter(f.id)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border flex items-center gap-1 transition-colors ${filter===f.id ? (isDark ? 'bg-[#3730a3] text-white border-[#3730a3]' : 'bg-[#f0f4ff] text-[#002a5d] border-[#002a5d]') : (isDark ? 'bg-transparent text-[#a1a1aa] border-[#3f3f46]' : 'bg-white text-gray-600 border-[#e5e7eb]')}`}>
-              <Icon name={f.i} size={14} className={filter===f.id ? (isDark?'text-white':'text-[#002a5d]') : ''}/> {f.l}
-            </button>
+      </div>
+      
+      <div className="px-4 mt-6">
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-6">
+           {CATEGORIES.map((c:any) => (
+              <button key={c.id} onClick={()=>setQ(c.name)} className={`px-4 py-2.5 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${q===c.name ? 'bg-[#f97316] text-black border-[#f97316]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+                <Icon name={c.icon} size={16} /> {c.name}
+              </button>
+           ))}
+        </div>
+        
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-black text-lg">Serviços em Destaque</h2>
+          <div className="flex gap-2">
+             <button onClick={()=>setFilter(filter==='price'?'all':'price')} className={`px-3 py-1 text-xs font-bold rounded-full border ${filter==='price'?'bg-[#002a5d] text-white border-[#002a5d]':(isDark?'border-[#3f3f46]':'border-gray-200')}`}>Menor Preço</button>
+             <button onClick={()=>setFilter(filter==='rate'?'all':'rate')} className={`px-3 py-1 text-xs font-bold rounded-full border ${filter==='rate'?'bg-[#f97316] text-black border-[#f97316]':(isDark?'border-[#3f3f46]':'border-gray-200')}`}><Icon name="star" size={12}/> Top</button>
+          </div>
+        </div>
+
+        {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
+
+        <div className="flex flex-col gap-5">
+          {filtered.map((s:any) => {
+            const isFav = user?.favorites?.includes(s.pro.id);
+            return (
+              <Link to={`/servico/${s.id}`} key={s.id} className={`block rounded-3xl border shadow-sm overflow-hidden active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="relative h-48 w-full">
+                  {s.imageUrls?.length > 0 ? (
+                    <div className="flex w-full h-full overflow-x-auto snap-x hide-scrollbar">
+                      {s.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-full object-cover shrink-0 snap-center" />)}
+                    </div>
+                  ) : <img src={s.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full object-cover" />}
+                  <button onClick={(e)=>{e.preventDefault(); if(user) toggleFavorite(s.pro.id);}} className="absolute top-3 right-3 p-2 bg-black/40 backdrop-blur-md rounded-full text-white z-10"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'}/></button>
+                  <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-wider">{s.category}</div>
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg leading-tight flex-1 pr-2">{s.title}</h3>
+                    <span className={`font-black text-lg ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img src={s.pro.avatarUrl} className="w-6 h-6 rounded-full object-cover border" />
+                    <span className={`text-sm font-semibold truncate ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.pro.name}</span>
+                    <div className="flex-1"></div>
+                    <span className="flex items-center gap-1 text-xs font-bold text-[#f97316]"><Icon name="star" size={14} fill/> {s.pro.rating.toFixed(1)}</span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [bookModal, setBookModal] = useState(false);
+  const { add } = useAppointments(user?.id, user?.role);
+  
+  let svc: any = null;
+  let pro: any = null;
+  for(const p of pros) {
+    const found = (p.services||[]).find((s:any) => s.id === id);
+    if(found) { svc = found; pro = p; break; }
+  }
+  
+  if(!svc) return <div className="p-8 text-center mt-20">Serviço não encontrado!</div>;
+  const isFav = user?.favorites?.includes(pro.id);
+  const { reviews } = useReviews(pro.id);
+
+  return (
+    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+      <header className="absolute top-0 w-full z-50 flex items-center justify-between px-4 py-3">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full bg-black/40 backdrop-blur-sm text-white"><Icon name="arrow_back" /></button>
+        <button onClick={() => { if(!user) navigate('/perfil'); else toggleFavorite(pro.id); }} className="p-2 rounded-full bg-black/40 backdrop-blur-sm"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'} /></button>
+      </header>
+      
+      <div className="flex-1 overflow-y-auto pb-32">
+        <div className="relative w-full h-80 flex overflow-x-auto snap-x hide-scrollbar">
+          {svc.imageUrls?.length > 0 ? svc.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-full shrink-0 snap-center object-cover" />) : <img src={svc.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full shrink-0 snap-center object-cover" />}
+        </div>
+        
+        <div className="px-5 -mt-8 relative z-10">
+          <div className={`p-6 rounded-3xl shadow-lg mb-6 ${isDark?'bg-[#27272a] border border-[#3f3f46]':'bg-white'}`}>
+             <h2 className="font-black text-2xl leading-tight mb-2">{svc.title}</h2>
+             <p className={`text-2xl font-black mb-4 ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {svc.price.toFixed(2)}</p>
+             {svc.duration && <span className={`text-xs font-bold flex items-center gap-1 mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`}><Icon name="schedule" size={14}/> Duração estimada: {svc.duration}</span>}
+             {svc.paymentMethods?.length > 0 && (
+               <div className="mb-4">
+                 <p className="text-xs font-bold mb-2 opacity-60">Aceita:</p>
+                 <div className="flex flex-wrap gap-2">
+                   {svc.paymentMethods.map((pm:string)=><span key={pm} className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${isDark?'border-[#3f3f46] text-[#a1a1aa]':'border-gray-200 text-gray-500'}`}>{pm}</span>)}
+                 </div>
+               </div>
+             )}
+             {svc.description && (
+               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#3f3f46]">
+                 <p className="text-xs font-bold mb-2 opacity-60">Descrição do Serviço:</p>
+                 <p className={`text-sm leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{svc.description}</p>
+               </div>
+             )}
+          </div>
+          
+          <Link to={`/chat-list`} onClick={(e)=>{ if(!user){ e.preventDefault(); navigate('/perfil'); } }} className={`p-4 rounded-3xl mb-6 border flex items-center gap-4 shadow-sm active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+             <img src={pro.avatarUrl} className="w-14 h-14 rounded-full object-cover" />
+             <div className="flex-1">
+               <p className="font-bold text-lg">{pro.name}</p>
+               <p className={`text-sm ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
+             </div>
+             <Icon name="chat" className="text-[#f97316]" />
+          </Link>
+          
+          <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="star" fill className="text-[#f97316]"/> Avaliações do Profissional</h3>
+          {reviews.length === 0 ? <p className={`text-sm py-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ainda não há avaliações.</p> : reviews.map((r:any) => (
+             <div key={r.id} className={`p-4 rounded-xl border mb-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+               <div className="flex items-center gap-1 mb-2 text-[#f97316]"><Icon name="star" fill size={16}/> <span className={`font-bold text-sm ${isDark?'text-white':'text-black'}`}>{r.rating.toFixed(1)}</span></div>
+               <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{r.text || 'Sem comentário.'}</p>
+               <p className={`text-xs mt-3 font-bold ${isDark?'text-gray-500':'text-gray-400'}`}>{r.clientName}</p>
+             </div>
           ))}
         </div>
       </div>
-      <div className="px-4 mt-4 flex flex-col gap-4">
-        {filtered.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="search_off" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhum profissional encontrado.</p></div>}
-        {filtered.map((p:any) => (
-          <button key={p.id} onClick={() => go('pro-detail', p.id)} className={`rounded-2xl shadow-sm border p-3 flex gap-3 items-start text-left ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className="relative"><img src={p.avatarUrl} className="w-24 h-28 rounded-xl object-cover" />{p.verified && <div className="absolute top-1 right-1 rounded-full p-0.5 bg-white"><Icon name="verified" fill size={18} className="text-[#3b82f6]" /></div>}</div>
-            <div className="flex-1 py-1 flex flex-col justify-between h-full">
-              <div>
-                <div className="flex justify-between items-start"><h3 className={`font-bold text-[15px] pr-2 leading-tight ${isDark?'text-white':'text-gray-900'}`}>{p.name}</h3><div className="flex items-center text-[#f97316] shrink-0"><Icon name="star" fill size={14} /><span className={`text-sm font-bold ml-1 ${isDark ? 'text-[#e4e4e7]' : 'text-gray-900'}`}>{p.rating.toFixed(1)}</span></div></div>
-                <p className={`text-xs mt-1 leading-snug ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{p.profession}</p>
-              </div>
-              <div className="mt-3 flex items-end justify-between w-full">
-                <div><span className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>A PARTIR DE</span><p className={`font-black text-lg ${isDark ? 'text-white' : 'text-[#002a5d]'}`}>R$ {(p.services?.[0]?.price || 100).toFixed(0)}<span className={`text-[10px] font-normal ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>/visita</span></p></div>
-                <span className={`px-4 py-2 rounded-lg font-bold text-xs ${isDark ? 'text-black bg-[#f97316]' : 'text-[#603100] bg-[#fd8b00]'}`}>Ver Perfil</span>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function ProfileScreen({ user, go, logout, isDark, toggleDarkMode, updateProfile, show }: any) {
-  const [editModal, setEditModal] = useState(false);
-  if (!user) return null;
-  return (
-    <div className="px-4 py-6 pb-8">
-      <div className="flex flex-col items-center mb-8">
-        <div className="relative mb-4">
-          <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.avatarInitial}&background=random`} className={`w-24 h-24 rounded-full border-4 shadow-md object-cover ${isDark ? 'border-[#18181b]' : 'border-white'}`} />
-          <button onClick={()=>setEditModal(true)} className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center border-2 shadow-sm ${isDark ? 'bg-[#60a5fa] text-[#18181b] border-[#18181b]' : 'bg-[#003f87] text-white border-white'}`}><Icon name="edit" size={16} /></button>
+      <div className={`fixed bottom-0 left-0 w-full p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
+        <div className="flex justify-center">
+          <button onClick={() => { if(!user) navigate('/perfil'); else setBookModal(true); }} className="w-full max-w-[448px] py-4 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform pointer-events-auto shadow-2xl">Agendar Horário</button>
         </div>
-        <h2 className="font-black text-2xl mb-1">{user.name} <span className="text-sm font-normal text-gray-500">({user.role === 'professional' ? 'Profissional' : 'Cliente'})</span></h2>
-        <p className={`text-sm flex items-center gap-1 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}><Icon name="mail" size={16} /> {user.email}</p>
       </div>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#dbeafe] text-[#2563eb]' : 'bg-[#d7e2ff] text-[#003f87]'}`}><Icon name="location_on" fill size={24} /></div><span className="font-bold text-[15px]">Endereços</span></button>
-        <button className={`flex flex-col p-4 rounded-2xl border text-left h-[120px] justify-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className={`w-12 h-12 rounded-full mb-3 flex items-center justify-center ${isDark ? 'bg-[#ffedd5] text-[#ea580c]' : 'bg-[#ffedd5] text-[#c2410c]'}`}><Icon name="credit_card" fill size={24} /></div><span className="font-bold text-[15px]">Pagamentos</span></button>
-        {user.role === 'client' && (
-          <button onClick={()=>go('favorites')} className={`col-span-2 flex items-center justify-between p-5 rounded-2xl border shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}><div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-[#86efac] text-[#14532d]' : 'bg-[#86efac] text-[#14532d]'}`}><Icon name="favorite" fill size={24} /></div><div><span className="font-bold text-base block">Favoritos</span><span className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Prestadores salvos</span></div></div><Icon name="chevron_right" className={isDark ? 'text-[#a1a1aa]' : 'text-gray-400'} /></button>
-        )}
-      </div>
-      <div className={`rounded-2xl border overflow-hidden shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-        <button onClick={toggleDarkMode} className={`w-full flex items-center justify-between p-5 border-b transition-colors ${isDark ? 'border-[#3f3f46] hover:bg-[#3f3f46]' : 'border-[#e5e7eb] hover:bg-gray-50'}`}><div className="flex items-center gap-4"><Icon name={isDark ? "light_mode" : "dark_mode"} className={isDark ? 'text-white' : 'text-gray-600'} /><span className="font-bold text-[15px]">Modo {isDark?'Claro':'Escuro'}</span></div><div className={`w-10 h-6 rounded-full flex items-center px-1 ${isDark ? 'bg-[#60a5fa] justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-sm"/></div></button>
-        <button onClick={logout} className={`w-full flex items-center gap-4 p-5 transition-colors ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}><Icon name="logout" className={isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'} /><span className={`font-bold text-[15px] ${isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'}`}>Sair da Conta</span></button>
-      </div>
-      <AnimatePresence>{editModal && <EditProfileModal user={user} show={show} onClose={()=>setEditModal(false)} onSave={(d:any)=>{updateProfile(d); setEditModal(false); show('Perfil atualizado!');}} isDark={isDark} />}</AnimatePresence>
+      
+      <AnimatePresence>
+        {bookModal && <BookingModal proId={pro.id} svc={svc} onClose={()=>setBookModal(false)} onBook={(d:string, t:string) => { 
+           add({ professionalId: pro.id, clientId: user.id, serviceId: svc.id, serviceTitle: svc.title, price: svc.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name }); 
+           setBookModal(false); show('Agendado com sucesso!'); navigate('/pedidos'); 
+        }} isDark={isDark} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-    </>
+function ProfileScreen({ user, logout, loginWithGoogle, toggleDarkMode, updateProfile, show, isDark }: any) {
+  const [editModal, setEditModal] = useState(false);
+  const { currentRole, setCurrentRole } = useContext(RoleContext);
+  
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+        <Icon name="account_circle" size={80} className="text-gray-300 mb-4" />
+        <h2 className="font-black text-2xl mb-2">Seu Perfil</h2>
+        <p className="text-sm text-gray-500 mb-8">Faça login para gerenciar sua conta e pedidos.</p>
+        <button onClick={loginWithGoogle} className="w-full py-4 rounded-full font-black text-white bg-[#002a5d] active:scale-95 transition-transform flex items-center justify-center gap-2"><Icon name="login" /> Entrar com Google</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 pb-8">
+      <h1 className="font-black text-2xl mb-6">Perfil</h1>
+      <div className={`p-5 rounded-3xl border mb-6 flex items-center gap-4 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+        <img src={user.avatarUrl} className="w-16 h-16 rounded-full object-cover border-2 border-[#f97316] p-0.5" />
+        <div className="flex-1">
+          <h2 className="font-bold text-xl leading-tight">{user.name}</h2>
+          <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{user.email}</p>
+        </div>
+        <button onClick={()=>setEditModal(true)} className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-95 transition-transform ${isDark?'bg-[#3f3f46] border-[#3f3f46]':'bg-gray-100 border-gray-200'}`}><Icon name="edit" size={20}/></button>
+      </div>
+      
+      <div className="flex flex-col gap-3 mb-6">
+        <button onClick={()=>setCurrentRole(currentRole === 'client' ? 'professional' : 'client')} className={`p-4 rounded-2xl flex items-center gap-4 font-bold active:scale-95 transition-transform ${isDark?'bg-[#27272a] text-white border border-[#3f3f46]':'bg-[#f97316] text-black'} shadow-sm`}>
+          <Icon name="swap_horiz" /> Mudar para modo {currentRole === 'client' ? 'Prestador' : 'Cliente'}
+        </button>
+        <button onClick={logout} className={`p-4 rounded-2xl flex items-center gap-4 font-bold border shadow-sm text-left text-red-500 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><Icon name="logout" /> Sair da Conta</button>
+      </div>
+      
+      <AnimatePresence>
+        {editModal && <EditProfileModal user={user} onClose={()=>setEditModal(false)} onSave={(data:any)=>{ updateProfile(data); setEditModal(false); show('Perfil atualizado com sucesso!'); }} isDark={isDark} show={show} />}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -1029,6 +1174,8 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
     </>
   );
 }
+
+
 
 
 
