@@ -1130,43 +1130,44 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
   const [aiGenerating, setAiGenerating] = useState(false);
   
   const generateAIAvatar = () => {
-    if(!av) {
-      if(show) show('Por favor, cole um link de foto normal para a IA usar de base!');
-      return;
-    }
+    if(!av) { if(show) show('Por favor, cole um link de foto normal!'); return; }
     setAiGenerating(true);
-    
     setTimeout(() => {
       setAv('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
-      if(show) show('✨ IA: Foto Profissional Gerada com Sucesso!');
+      if(show) show('✨ IA: Foto Profissional Gerada!');
       setAiGenerating(false);
     }, 4000);
   };
 
+  const inputCls = `w-full p-4 rounded-xl border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`;
+
   return (
     <>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={ixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto }>
-        <div className="flex justify-between items-center mb-8"><h2 className="font-black text-2xl">Editar Perfil</h2><button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button></div>
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto ${isDark?'bg-[#27272a] text-white':'bg-white text-[#191c1d]'}`}>
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="font-black text-2xl">Editar Perfil</h2>
+          <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button>
+        </div>
         
         <div className="mb-6">
           <label className="font-bold text-sm mb-2 block">Link da Foto de Perfil</label>
           <div className="flex gap-2">
-            <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={lex-1 p-4 rounded-xl border outline-none text-sm font-medium } />
+            <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={`flex-1 p-4 rounded-xl border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
             <button disabled={aiGenerating} onClick={generateAIAvatar} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center min-w-[56px]">
               {aiGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Icon name="auto_awesome" />}
             </button>
           </div>
-          {aiGenerating && <p className="text-xs font-bold text-indigo-500 mt-2 animate-pulse flex items-center gap-1"><Icon name="memory" size={14} /> Processando rosto com Inteligência Artificial...</p>}
-          {!aiGenerating && <p className="text-xs opacity-60 mt-2">Cole o link da sua foto normal e clique na estrela mágica para transformar em foto de estúdio.</p>}
+          {aiGenerating && <p className="text-xs font-bold text-indigo-500 mt-2 animate-pulse flex items-center gap-1"><Icon name="memory" size={14} /> Processando com Inteligência Artificial...</p>}
+          {!aiGenerating && <p className="text-xs opacity-60 mt-2">Cole o link da sua foto e clique na estrela mágica para transformar em foto de estúdio.</p>}
         </div>
 
         {user.role === 'professional' && (
           <>
             <label className="font-bold text-sm mb-2 block">Link da Foto de Capa (Opcional)</label>
-            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={w-full p-4 rounded-xl mb-6 border outline-none text-sm font-medium } />
+            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={`${inputCls} mb-6`} />
             <label className="font-bold text-sm mb-2 block">Sobre o seu trabalho (Bio)</label>
-            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={w-full p-4 rounded-xl mb-6 border outline-none text-sm font-medium min-h-[120px] } />
+            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={`${inputCls} mb-6 min-h-[120px]`} />
           </>
         )}
         <button disabled={aiGenerating} onClick={()=>onSave({ avatarUrl: av, coverUrl: cv, description: desc })} className="w-full py-4 rounded-xl font-black text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform mt-2 disabled:opacity-50">Salvar Alterações</button>
@@ -1174,6 +1175,8 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
     </>
   );
 }
+
+
 
 
 
