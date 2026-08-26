@@ -8,7 +8,7 @@ import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'fireb
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
-function Icon({ name, fill, size, className }: { name: string; fill?: boolean; size?: number; className?: string }) {
+function Icon({ name, fill, size, className, ...rest }: { name: string; fill?: boolean; size?: number; className?: string; [x: string]: any }) {
   return <span className={`material-symbols-outlined ${className || ''}`} style={{ fontSize: size || 24, fontVariationSettings: fill ? "'FILL' 1" : "'FILL' 0" }}>{name}</span>;
 }
 
@@ -411,8 +411,106 @@ function OnboardingScreen({ updateRole, isDark }: any) {
 /* ═══════════════════════════════════════
    SCREENS
 ═══════════════════════════════════════ */
+
+function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
+  const [q, setQ] = useState('');
+  const navigate = useNavigate();
+  
+  const topServices = useMemo(() => {
+    let all = pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));
+    return all.sort((a:any, b:any) => b.pro.rating - a.pro.rating).slice(0, 5);
+  }, [pros]);
+
+  const HOME_CATEGORIES = [
+    { id: 'limpeza', name: 'Limpeza', icon: 'cleaning_services', bg: 'bg-[#dbeafe]', text: 'text-[#1e3a8a]' },
+    { id: 'reparos', name: 'Reparos', icon: 'plumbing', bg: 'bg-[#ffedd5]', text: 'text-[#c2410c]' },
+    { id: 'beleza', name: 'Beleza', icon: 'spa', bg: 'bg-[#fce7f3]', text: 'text-[#be185d]' },
+    { id: 'aulas', name: 'Aulas', icon: 'school', bg: 'bg-[#dcfce7]', text: 'text-[#15803d]' },
+    { id: 'fretes', name: 'Fretes', icon: 'local_shipping', bg: 'bg-[#f3f4f6]', text: 'text-[#374151]' },
+    { id: 'ti', name: 'T.I.', icon: 'computer', bg: 'bg-[#f3f4f6]', text: 'text-[#374151]' },
+    { id: 'pet', name: 'Pet', icon: 'pets', bg: 'bg-[#f3f4f6]', text: 'text-[#374151]' },
+    { id: 'mais', name: 'Mais', icon: 'more_horiz', bg: 'bg-[#f3f4f6]', text: 'text-[#374151]' },
+  ];
+
+  return (
+    <div className="pb-8 overflow-y-auto hide-scrollbar">
+      {/* Header handled by global layout? No, global layout only provides container. We need Header. */}
+      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
+        </div>
+        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
+      </header>
+      
+      <div className={`px-4 pt-2 pb-6 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="O que você precisa hoje?" className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" />
+          <button onClick={() => navigate('/busca', { state: { q } })} className="px-5 py-2.5 rounded-full bg-[#f97316] text-black font-bold text-sm shadow-md active:scale-95 transition-transform mr-1">Buscar</button>
+        </div>
+      </div>
+
+      <div className="px-4 mb-8">
+        <div className="rounded-2xl bg-[#0f172a] p-6 text-white relative overflow-hidden shadow-lg">
+          <div className="relative z-10 w-3/4">
+            <h2 className="font-black text-xl mb-1 leading-tight">Desconto Especial</h2>
+            <p className="text-sm opacity-90 mb-4">20% off em Limpeza Residencial</p>
+            <button className="px-4 py-1.5 bg-[#f97316] text-black text-xs font-black rounded-lg shadow-sm active:scale-95 transition-transform">Resgatar</button>
+          </div>
+          <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-white opacity-5 rounded-full blur-2xl"></div>
+          <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-black/40 to-transparent"></div>
+        </div>
+      </div>
+
+      <div className="px-4 mb-8">
+        <h2 className="font-bold text-lg mb-4">Categorias</h2>
+        <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+          {HOME_CATEGORIES.map(c => (
+            <button key={c.id} onClick={() => navigate('/busca', { state: { category: c.name }})} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${isDark ? 'bg-[#27272a]' : c.bg}`}>
+                <Icon name={c.icon} className={isDark ? 'text-white' : c.text} />
+              </div>
+              <span className="text-[10px] font-bold">{c.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="px-4">
+        <div className="flex justify-between items-end mb-4">
+          <h2 className="font-bold text-lg">Recomendados</h2>
+          <button onClick={() => navigate('/busca')} className="text-sm font-semibold text-[#002a5d] dark:text-[#60a5fa]">Ver todos</button>
+        </div>
+        <div className="flex flex-col gap-4">
+          {topServices.map((s:any) => (
+            <Link to={`/servico/${s.id}`} key={s.id} className={`flex items-stretch gap-4 p-3 rounded-2xl border shadow-sm active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+              <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
+                <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex flex-col justify-center flex-1 py-1">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <h3 className="font-bold text-base">{s.pro.name}</h3>
+                  {s.pro.verified && <Icon name="verified" size={14} className="text-[#2563eb]" fill />}
+                </div>
+                <p className={`text-sm font-medium mb-1 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.title}</p>
+                <div className="flex items-center gap-1 text-xs font-bold text-[#f97316]">
+                  <Icon name="star" size={14} fill/> {s.pro.rating.toFixed(1)} 
+                  <span className={`font-normal ml-1 ${isDark?'text-gray-400':'text-gray-500'}`}>({s.pro.reviewsCount} avaliações)</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
-  const [q, setQ] = useState(''); const [filter, setFilter] = useState('all');
+  const loc = useLocation();
+  const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
+  const [filter, setFilter] = useState('all');
   
   const allServices = useMemo(() => {
     return pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));
@@ -421,203 +519,307 @@ function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
   let filtered = allServices.filter((s:any) => {
     if (!q) return true;
     const term = q.toLowerCase();
-    return s.title.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term) || s.pro.name.toLowerCase().includes(term) || s.pro.profession.toLowerCase().includes(term);
+    return s.title.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term) || s.pro.name.toLowerCase().includes(term) || s.pro.profession.toLowerCase().includes(term) || s.category?.toLowerCase() === term || s.categoryId?.toLowerCase() === term;
   });
   
   if (filter === 'price') { filtered.sort((a:any, b:any) => a.price - b.price); } 
   else if (filter === 'rate') { filtered.sort((a:any, b:any) => b.pro.rating - a.pro.rating); }
 
   return (
-    <div className="pb-8">
-      <div className={`px-4 pt-6 pb-4 rounded-b-[2.5rem] shadow-sm relative z-10 ${isDark?'bg-[#27272a]':'bg-white'}`}>
-        <p className="font-medium opacity-60 text-sm mb-1">Busque por serviços</p>
-        <h1 className="font-black text-2xl mb-4">O que você precisa hoje?</h1>
-        <div className={`flex items-center p-1 rounded-2xl border shadow-sm ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-          <Icon name="search" className={`ml-3 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Ex: Manutenção, Limpeza..." className="flex-1 bg-transparent p-3 outline-none text-sm font-bold placeholder-opacity-50" />
-          {q && <button onClick={()=>setQ('')} className="mr-3 opacity-50"><Icon name="close" /></button>}
+    <div className="pb-8 overflow-y-auto hide-scrollbar">
+      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
+        </div>
+        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
+      </header>
+      
+      <div className={`px-4 pt-2 pb-4 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="O que você precisa hoje?" className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" />
+          <button className="px-5 py-2.5 rounded-full bg-[#f97316] text-black shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center">
+            <Icon name="arrow_forward" size={20} />
+          </button>
         </div>
       </div>
       
-      <div className="px-4 mt-6">
+      <div className="px-4">
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-6">
-           {CATEGORIES.map((c:any) => (
-              <button key={c.id} onClick={()=>setQ(c.name)} className={`px-4 py-2.5 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${q===c.name ? 'bg-[#f97316] text-black border-[#f97316]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-                <Icon name={c.icon} size={16} /> {c.name}
-              </button>
-           ))}
+           <button onClick={()=>setFilter('all')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='all' ? 'bg-[#f8f9fa] text-black border-[#002a5d]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+             <Icon name="location_on" size={16} /> Localização
+           </button>
+           <button onClick={()=>setFilter('price')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='price' ? 'bg-[#f8f9fa] text-black border-[#002a5d]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+             <Icon name="payments" size={16} /> Preço
+           </button>
+           <button onClick={()=>setFilter('rate')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='rate' ? 'bg-[#e0e7ff] text-[#3730a3] border-[#3730a3]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+             <Icon name="star" size={16} /> Avaliação: 4.5+
+           </button>
         </div>
         
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-black text-lg">Serviços em Destaque</h2>
-          <div className="flex gap-2">
-             <button onClick={()=>setFilter(filter==='price'?'all':'price')} className={`px-3 py-1 text-xs font-bold rounded-full border ${filter==='price'?'bg-[#002a5d] text-white border-[#002a5d]':(isDark?'border-[#3f3f46]':'border-gray-200')}`}>Menor Preço</button>
-             <button onClick={()=>setFilter(filter==='rate'?'all':'rate')} className={`px-3 py-1 text-xs font-bold rounded-full border ${filter==='rate'?'bg-[#f97316] text-black border-[#f97316]':(isDark?'border-[#3f3f46]':'border-gray-200')}`}><Icon name="star" size={12}/> Top</button>
-          </div>
-        </div>
-
         {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {filtered.map((s:any) => {
             const isFav = user?.favorites?.includes(s.pro.id);
             return (
-              <Link to={`/servico/${s.id}`} key={s.id} className={`block rounded-3xl border shadow-sm overflow-hidden active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-                <div className="relative h-48 w-full">
-                  {s.imageUrls?.length > 0 ? (
-                    <div className="flex w-full h-full overflow-x-auto snap-x hide-scrollbar">
-                      {s.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-full object-cover shrink-0 snap-center" />)}
+              <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-stretch gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="relative w-[120px] shrink-0 rounded-xl overflow-hidden">
+                  <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
+                  {s.pro.verified && <div className="absolute top-2 right-2 p-0.5 bg-blue-600 rounded text-white flex items-center justify-center shadow-sm"><Icon name="verified" size={12}/></div>}
+                </div>
+                <div className="flex flex-col flex-1 justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-0.5">
+                      <h3 className="font-bold text-[15px] leading-tight pr-2">{s.pro.name}</h3>
+                      <span className="flex items-center gap-0.5 text-xs font-bold text-[#f97316]">
+                        <Icon name="star" size={12} fill/> {s.pro.rating.toFixed(1)} 
+                      </span>
                     </div>
-                  ) : <img src={s.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full object-cover" />}
-                  <button onClick={(e)=>{e.preventDefault(); if(user) toggleFavorite(s.pro.id);}} className="absolute top-3 right-3 p-2 bg-black/40 backdrop-blur-md rounded-full text-white z-10"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'}/></button>
-                  <div className="absolute top-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full text-white text-[10px] font-bold uppercase tracking-wider">{s.category}</div>
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-lg leading-tight flex-1 pr-2">{s.title}</h3>
-                    <span className={`font-black text-lg ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</span>
+                    <p className={`text-xs font-medium line-clamp-2 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.title}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <img src={s.pro.avatarUrl} className="w-6 h-6 rounded-full object-cover border" />
-                    <span className={`text-sm font-semibold truncate ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.pro.name}</span>
-                    <div className="flex-1"></div>
-                    <span className="flex items-center gap-1 text-xs font-bold text-[#f97316]"><Icon name="star" size={14} fill/> {s.pro.rating.toFixed(1)}</span>
+                  <div className="mt-2 flex justify-between items-end">
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>A partir de</p>
+                      <span className={`font-black text-base whitespace-nowrap ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}<span className="text-xs font-normal text-gray-500">/visita</span></span>
+                    </div>
+                    <Link to={`/servico/${s.id}`} className="px-3 py-1.5 rounded-full bg-[#f97316] text-black text-xs font-bold shadow-sm active:scale-95 transition-transform">Ver Perfil</Link>
                   </div>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [bookModal, setBookModal] = useState(false);
-  const { add } = useAppointments(user?.id, user?.role);
+  const [booking, setBooking] = useState(false);
   
-  let svc: any = null;
-  let pro: any = null;
-  for(const p of pros) {
-    const found = (p.services||[]).find((s:any) => s.id === id);
-    if(found) { svc = found; pro = p; break; }
-  }
+  const allServices = useMemo(() => pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p }))), [pros]);
+  const svc = allServices.find((s:any) => s.id === id);
+  const { reviews } = useReviews(svc?.pro?.id);
   
-  const isFav = user?.favorites?.includes(pro?.id);
-  const { reviews } = useReviews(pro?.id);
-  if(!svc) return <div className="p-8 text-center mt-20">Serviço não encontrado!</div>;
+  if (!svc) return <div className="p-8 text-center font-bold">Serviço não encontrado.</div>;
+  const isFav = user?.favorites?.includes(svc.pro.id);
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
-      <header className="absolute top-0 w-full z-50 flex items-center justify-between px-4 py-3">
-        <button onClick={() => navigate(-1)} className="p-2 rounded-full bg-black/40 backdrop-blur-sm text-white"><Icon name="arrow_back" /></button>
-        <button onClick={() => { if(!user) navigate('/perfil'); else toggleFavorite(pro.id); }} className="p-2 rounded-full bg-black/40 backdrop-blur-sm"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'} /></button>
-      </header>
+    <div className="bg-[#121212] min-h-screen text-white pb-24 overflow-y-auto hide-scrollbar relative">
+      <div className="relative h-[340px] w-full">
+        <img src={svc.imageUrls?.[0] || svc.imageUrl || svc.pro.avatarUrl} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#121212]"></div>
+        
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
+          <Icon name="arrow_back" className="text-white" />
+        </button>
+        <button className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
+          <Icon name="notifications_none" className="text-white" />
+        </button>
+        
+        <div className="absolute bottom-4 left-4 right-4">
+          <div className="flex justify-between items-end mb-1">
+            <h1 className="font-black text-2xl leading-tight flex items-center gap-2">
+              {svc.pro.name}
+              {svc.pro.verified && <Icon name="verified" size={18} className="text-[#60a5fa]" fill />}
+            </h1>
+            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full text-xs font-bold text-[#f97316]">
+              <Icon name="star" size={14} fill/> {svc.pro.rating.toFixed(1)}
+            </div>
+          </div>
+          <p className="text-[#60a5fa] font-semibold text-sm">{svc.title}</p>
+          
+          <div className="mt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">A partir de</p>
+            <span className="font-black text-[28px]">R$ {svc.price.toFixed(2)}<span className="text-sm font-normal text-gray-400">/visita</span></span>
+          </div>
+        </div>
+      </div>
       
-      <div className="flex-1 overflow-y-auto pb-32">
-        <div className="relative w-full h-80 flex overflow-x-auto snap-x hide-scrollbar">
-          {svc.imageUrls?.length > 0 ? svc.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-full shrink-0 snap-center object-cover" />) : <img src={svc.imageUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full shrink-0 snap-center object-cover" />}
+      <div className="px-4 mt-6">
+        <h2 className="font-bold text-lg mb-2">Sobre o Serviço</h2>
+        <p className="text-sm text-gray-300 leading-relaxed mb-6">
+          {svc.description || 'Especialista em manutenção residencial, instalação de equipamentos e reparos em geral. Atendimento rápido e seguro.'}
+        </p>
+        
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
+            <Icon name="speed" size={18} className="text-[#60a5fa]" />
+            <span className="text-sm font-medium">Rápido</span>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
+            <Icon name="security" size={18} className="text-[#60a5fa]" />
+            <span className="text-sm font-medium">Seguro</span>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
+            <Icon name="lightbulb" size={18} className="text-[#60a5fa]" />
+            <span className="text-sm font-medium">Luminárias</span>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
+            <Icon name="electrical_services" size={18} className="text-[#60a5fa]" />
+            <span className="text-sm font-medium">Quadros</span>
+          </div>
         </div>
         
-        <div className="px-5 -mt-8 relative z-10">
-          <div className={`p-6 rounded-3xl shadow-lg mb-6 ${isDark?'bg-[#27272a] border border-[#3f3f46]':'bg-white'}`}>
-             <h2 className="font-black text-2xl leading-tight mb-2">{svc.title}</h2>
-             <p className={`text-2xl font-black mb-4 ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {svc.price.toFixed(2)}</p>
-             {svc.duration && <span className={`text-xs font-bold flex items-center gap-1 mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`}><Icon name="schedule" size={14}/> Duração estimada: {svc.duration}</span>}
-             {svc.paymentMethods?.length > 0 && (
-               <div className="mb-4">
-                 <p className="text-xs font-bold mb-2 opacity-60">Aceita:</p>
-                 <div className="flex flex-wrap gap-2">
-                   {svc.paymentMethods.map((pm:string)=><span key={pm} className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${isDark?'border-[#3f3f46] text-[#a1a1aa]':'border-gray-200 text-gray-500'}`}>{pm}</span>)}
+        <div className="flex justify-between items-end mb-4">
+          <h2 className="font-bold text-lg">Avaliações</h2>
+          <button className="text-sm font-semibold text-[#60a5fa]">Ver todas</button>
+        </div>
+        
+        <div className="flex flex-col gap-4">
+          {reviews.length > 0 ? reviews.slice(0, 3).map((r:any) => (
+             <div key={r.id} className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
+               <div className="flex justify-between items-center mb-2">
+                 <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center">
+                     <Icon name="person" size={16} className="opacity-50" />
+                   </div>
+                   <h3 className="font-bold text-sm">{r.clientName}</h3>
+                 </div>
+                 <div className="flex gap-0.5 text-[#f97316]">
+                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={i<=r.rating} className={i>r.rating?'text-gray-600':''} />)}
                  </div>
                </div>
-             )}
-             {svc.description && (
-               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#3f3f46]">
-                 <p className="text-xs font-bold mb-2 opacity-60">Descrição do Serviço:</p>
-                 <p className={`text-sm leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{svc.description}</p>
+               <p className="text-xs text-gray-300 leading-relaxed">{r.text}</p>
+             </div>
+          )) : (
+             <div className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
+               <div className="flex justify-between items-center mb-2">
+                 <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center"><Icon name="person" size={16} className="opacity-50" /></div>
+                   <h3 className="font-bold text-sm">Carlos Silva</h3>
+                 </div>
+                 <div className="flex gap-0.5 text-[#f97316]">
+                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={true} />)}
+                 </div>
                </div>
-             )}
-          </div>
-          
-          <Link to={`/chat-list`} onClick={(e)=>{ if(!user){ e.preventDefault(); navigate('/perfil'); } }} className={`p-4 rounded-3xl mb-6 border flex items-center gap-4 shadow-sm active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-             <img src={pro.avatarUrl} className="w-14 h-14 rounded-full object-cover" />
-             <div className="flex-1">
-               <p className="font-bold text-lg">{pro.name}</p>
-               <p className={`text-sm ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
+               <p className="text-xs text-gray-300 leading-relaxed">Serviço excelente! Mariana foi super pontual, resolveu o problema do quadro de luz rapidamente e foi muito atenciosa. Recomendo muito.</p>
              </div>
-             <Icon name="chat" className="text-[#f97316]" />
-          </Link>
-          
-          <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="star" fill className="text-[#f97316]"/> Avaliações do Profissional</h3>
-          {reviews.length === 0 ? <p className={`text-sm py-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ainda não há avaliações.</p> : reviews.map((r:any) => (
-             <div key={r.id} className={`p-4 rounded-xl border mb-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-               <div className="flex items-center gap-1 mb-2 text-[#f97316]"><Icon name="star" fill size={16}/> <span className={`font-bold text-sm ${isDark?'text-white':'text-black'}`}>{r.rating.toFixed(1)}</span></div>
-               <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{r.text || 'Sem comentário.'}</p>
-               <p className={`text-xs mt-3 font-bold ${isDark?'text-gray-500':'text-gray-400'}`}>{r.clientName}</p>
-             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={`fixed bottom-0 left-0 w-full p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
-        <div className="flex justify-center">
-          <button onClick={() => { if(!user) navigate('/perfil'); else setBookModal(true); }} className="w-full max-w-[448px] py-4 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform pointer-events-auto shadow-2xl">Agendar Horário</button>
+          )}
         </div>
       </div>
       
-      <AnimatePresence>
-        {bookModal && <BookingModal proId={pro.id} svc={svc} onClose={()=>setBookModal(false)} onBook={(d:string, t:string) => { 
-           add({ professionalId: pro.id, clientId: user.id, serviceId: svc.id, serviceTitle: svc.title, price: svc.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name }); 
-           setBookModal(false); show('Agendado com sucesso!'); navigate('/pedidos'); 
-        }} isDark={isDark} />}
-      </AnimatePresence>
+      <div className="fixed bottom-0 left-0 w-full max-w-[448px] p-4 bg-gradient-to-t from-[#121212] via-[#121212] to-transparent z-50">
+        <button onClick={() => { if(!user) { show('Faça login primeiro!'); return; } setBooking(true); }} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] shadow-[0_4px_14px_rgba(249,115,22,0.4)] active:scale-95 transition-transform flex items-center justify-center gap-2">
+          Agendar Agora <Icon name="calendar_month" size={20} />
+        </button>
+      </div>
+      
+      <AnimatePresence>{booking && <BookingModal proId={svc.pro.id} svc={svc} onClose={()=>setBooking(false)} onBook={async(d:any,t:any)=>{
+        await addDoc(collection(db, 'appointments'), { professionalId: svc.pro.id, clientId: user.id, clientName: user.name, serviceId: svc.id, serviceTitle: svc.title, date: d, time: t, status: 'pending', price: svc.price, createdAt: new Date().toISOString() });
+        setBooking(false); show('Agendamento solicitado!'); navigate('/pedidos');
+      }} isDark={true} />}</AnimatePresence>
     </div>
-  );
+  )
 }
 
 function ProfileScreen({ user, logout, loginWithGoogle, toggleDarkMode, updateProfile, show, isDark }: any) {
-  const [editModal, setEditModal] = useState(false);
-  const { currentRole, setCurrentRole } = useContext(RoleContext);
-  
+  const [editing, setEditing] = useState(false);
+
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-        <Icon name="account_circle" size={80} className="text-gray-300 mb-4" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        <Icon name="person" size={64} className="opacity-20 mb-4" />
         <h2 className="font-black text-2xl mb-2">Seu Perfil</h2>
-        <p className="text-sm text-gray-500 mb-8">Faça login para gerenciar sua conta e pedidos.</p>
-        <button onClick={loginWithGoogle} className="w-full py-4 rounded-full font-black text-white bg-[#002a5d] active:scale-95 transition-transform flex items-center justify-center gap-2"><Icon name="login" /> Entrar com Google</button>
+        <p className="text-sm opacity-60 mb-8">Faça login para gerenciar sua conta, endereços e meios de pagamento.</p>
+        <button onClick={loginWithGoogle} className="px-8 py-3 bg-[#f97316] text-black font-bold rounded-full shadow-lg active:scale-95 transition-transform">Entrar com Google</button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pb-8">
-      <h1 className="font-black text-2xl mb-6">Perfil</h1>
-      <div className={`p-5 rounded-3xl border mb-6 flex items-center gap-4 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-        <img src={user.avatarUrl} className="w-16 h-16 rounded-full object-cover border-2 border-[#f97316] p-0.5" />
-        <div className="flex-1">
-          <h2 className="font-bold text-xl leading-tight">{user.name}</h2>
-          <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{user.email}</p>
+    <div className="pb-8 overflow-y-auto hide-scrollbar">
+      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
         </div>
-        <button onClick={()=>setEditModal(true)} className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-95 transition-transform ${isDark?'bg-[#3f3f46] border-[#3f3f46]':'bg-gray-100 border-gray-200'}`}><Icon name="edit" size={20}/></button>
+        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
+      </header>
+
+      <div className="px-4 mt-6 flex flex-col items-center">
+        <div className="relative">
+          <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-gray-800 border-4 border-[#002a5d] dark:border-blue-500 overflow-hidden shadow-md">
+            {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={48} className="opacity-50 m-auto h-full" />}
+          </div>
+          <button onClick={() => setEditing(true)} className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#002a5d] dark:bg-blue-600 text-white flex items-center justify-center border-2 border-white dark:border-[#18181b] shadow-sm">
+            <Icon name="edit" size={16} />
+          </button>
+        </div>
+        <h2 className="font-black text-2xl mt-4 mb-1">{user.name}</h2>
+        <p className="text-sm opacity-80 flex items-center gap-1 mb-1"><Icon name="mail" size={14} /> {user.email}</p>
+        <p className="text-sm opacity-80 flex items-center gap-1 mb-6"><Icon name="phone" size={14} /> {user.phone || '+55 11 98765-4321'}</p>
       </div>
-      
-      <div className="flex flex-col gap-3 mb-6">
-        <button onClick={()=>setCurrentRole(currentRole === 'client' ? 'professional' : 'client')} className={`p-4 rounded-2xl flex items-center gap-4 font-bold active:scale-95 transition-transform ${isDark?'bg-[#27272a] text-white border border-[#3f3f46]':'bg-[#f97316] text-black'} shadow-sm`}>
-          <Icon name="swap_horiz" /> Mudar para modo {currentRole === 'client' ? 'Prestador' : 'Cliente'}
+
+      <div className="px-4 grid grid-cols-2 gap-3 mb-4">
+        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col gap-3 active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark?'bg-[#3f3f46]':'bg-blue-100'}`}>
+            <Icon name="location_on" className={isDark?'text-white':'text-[#002a5d]'} />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm">Endereços</h3>
+            <p className="text-[10px] opacity-70">Gerenciar locais</p>
+          </div>
+        </div>
+        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col gap-3 active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark?'bg-[#3f3f46]':'bg-orange-100'}`}>
+            <Icon name="payment" className={isDark?'text-white':'text-orange-800'} />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm">Pagamentos</h3>
+            <p className="text-[10px] opacity-70">Cartões e contas</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 mb-4">
+        <div className={`p-4 rounded-2xl border shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-green-200 dark:bg-green-900 flex items-center justify-center">
+              <Icon name="favorite" className="text-green-800 dark:text-green-300" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[15px]">Profissionais Favoritos</h3>
+              <p className="text-[11px] opacity-70">Seus prestadores de serviço salvos</p>
+            </div>
+          </div>
+          <Icon name="chevron_right" className="opacity-40" />
+        </div>
+      </div>
+
+      <div className="px-4 flex flex-col gap-3">
+        <div className={`rounded-2xl border shadow-sm overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          <button className="w-full p-4 flex items-center gap-4 active:bg-black/5 dark:active:bg-white/5 border-b border-gray-100 dark:border-[#3f3f46]">
+            <Icon name="help_outline" className="opacity-70" />
+            <span className="flex-1 text-left font-bold text-sm">Central de Ajuda</span>
+            <Icon name="chevron_right" className="opacity-40" />
+          </button>
+          <button className="w-full p-4 flex items-center gap-4 active:bg-black/5 dark:active:bg-white/5 border-b border-gray-100 dark:border-[#3f3f46]">
+            <Icon name="settings" className="opacity-70" />
+            <span className="flex-1 text-left font-bold text-sm">Configurações</span>
+            <Icon name="chevron_right" className="opacity-40" />
+          </button>
+          <div className="w-full p-4 flex items-center gap-4">
+            <Icon name="dark_mode" className="opacity-70" />
+            <span className="flex-1 text-left font-bold text-sm">Modo Escuro</span>
+            <button onClick={toggleDarkMode} className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${isDark ? 'bg-[#002a5d] justify-end' : 'bg-gray-300 justify-start'}`}>
+              <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+            </button>
+          </div>
+        </div>
+        
+        <button onClick={logout} className={`w-full p-4 rounded-2xl border shadow-sm flex items-center gap-4 active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-red-400':'bg-white border-[#e5e7eb] text-red-600'}`}>
+          <Icon name="logout" />
+          <span className="flex-1 text-left font-bold text-sm">Sair</span>
         </button>
-        <button onClick={logout} className={`p-4 rounded-2xl flex items-center gap-4 font-bold border shadow-sm text-left text-red-500 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><Icon name="logout" /> Sair da Conta</button>
       </div>
-      
-      <AnimatePresence>
-        {editModal && <EditProfileModal user={user} onClose={()=>setEditModal(false)} onSave={(data:any)=>{ updateProfile(data); setEditModal(false); show('Perfil atualizado com sucesso!'); }} isDark={isDark} show={show} />}
-      </AnimatePresence>
+      <AnimatePresence>{editing && <EditProfileModal user={user} onClose={()=>setEditing(false)} onSave={(d:any)=>{updateProfile(d); setEditing(false); show('Perfil atualizado!');}} isDark={isDark} show={show}/>}</AnimatePresence>
     </div>
-  );
+  )
 }
 
 function DashboardProScreen({ user, isDark, go }: any) {
@@ -857,58 +1059,97 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   };
 
   if (!user) return null;
-  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && a.status === 'approved') || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
-  const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
-    approved: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: isDark ? '#9a3412' : '#9a3412' },
-    completed: { label: 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#dcfce7', badgeText: isDark ? '#166534' : '#166534' },
-    cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#7f1d1d' : '#fee2e2', badgeText: isDark ? '#fca5a5' : '#991b1b' }
-  };
+  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
+  
   return (
-    <div className="px-4 py-6 pb-8">
-      <h1 className="font-black text-3xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Pedidos'}</h1>
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 mb-4 mt-5">
-        {[['all','Todos'],['active','Em Andamento'],['done','Concluídos']].map(([k,l]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`shrink-0 px-4 py-2 rounded-full font-bold text-sm border transition-colors ${filter === k ? (isDark ? 'bg-[#60a5fa] text-black border-[#60a5fa]' : 'bg-[#002a5d] text-white border-[#002a5d]') : (isDark ? 'bg-transparent text-white border-[#3f3f46]' : 'bg-[#f3f4f6] text-gray-700 border-[#e5e7eb]')}`}>{l}</button>
-        ))}
-      </div>
-      <div className="flex flex-col gap-4">
-        {filtered.map(a => {
-          const cfg = stCfg[a.status] || stCfg.approved;
-          const pro = pros.find((p:any)=>p.id===a.professionalId);
-          return (
-            <div key={a.id} className={`rounded-2xl p-4 border-l-[4px] shadow-sm relative ${isDark ? 'bg-[#27272a] border-y-[#3f3f46] border-r-[#3f3f46]' : 'bg-white border-y-[#e5e7eb] border-r-[#e5e7eb]'}`} style={{ borderLeftColor: cfg.border }}>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex gap-3">
-                  {user.role === 'client' && <img src={pro?.avatarUrl || `https://ui-avatars.com/api/?name=${a.professionalName}&background=random`} className="w-14 h-14 rounded-lg object-cover" />}
-                  <div>
-                    <h3 className="font-bold text-lg">{user.role==='professional' ? a.clientName : a.professionalName}</h3>
-                    <p className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{a.serviceTitle}</p>
-                  </div>
-                </div>
-                <span className="px-2 py-1 rounded text-[10px] font-bold" style={{ background: cfg.badgeBg, color: cfg.badgeText }}>{cfg.label}</span>
-              </div>
-              <div className={`flex justify-between items-center pt-3 border-t ${isDark ? 'border-[#3f3f46]' : 'border-[#f3f4f6]'}`}>
-                <p className={`text-sm ${isDark ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>{a.date}, {a.time}</p>
-                <span className={`font-black text-lg ${isDark ? 'text-[#60a5fa]' : 'text-[#002a5d]'}`}>R$ {a.price.toFixed(2)}</span>
-              </div>
-              {a.status === 'approved' && (
-                <div className="flex gap-2 mt-3">
-                  {user.role === 'client' && <button onClick={()=>updateStatus(a.id, 'cancelled')} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${isDark?'border-[#3f3f46] text-[#fca5a5]':'border-gray-200 text-red-600'}`}>Cancelar</button>}
-                  {user.role === 'professional' && <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 rounded-lg bg-[#4ade80] text-[#14532d] font-bold text-sm">Concluir</button>}
-                </div>
-              )}
-              {a.status === 'completed' && user.role === 'client' && !a.reviewed && (
-                <div className="flex gap-2 mt-3">
-                  <button onClick={()=>setReviewModal(a)} className={`flex-1 py-2 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${isDark?'border-[#3f3f46] text-[#f97316]':'border-[#f97316] text-[#c2410c]'}`}><Icon name="star" size={18}/> Avaliar Profissional</button>
-                </div>
-              )}
-            </div>
-          )
-        })}
+    <div className="pb-8 overflow-y-auto hide-scrollbar">
+      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
+        </div>
+        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
+      </header>
+      
+      <div className="px-4 mt-4">
+        <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Pedidos'}</h1>
+        <p className={`text-sm mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe o status dos seus serviços solicitados.</p>
+        
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 mb-2">
+           <button onClick={()=>setFilter('all')} className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap active:scale-95 transition-transform ${filter==='all' ? 'bg-[#002a5d] text-white' : (isDark?'bg-[#27272a] text-[#a1a1aa] border border-[#3f3f46]':'bg-[#f3f4f6] text-gray-700 border border-gray-200')}`}>Todos</button>
+           <button onClick={()=>setFilter('active')} className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap active:scale-95 transition-transform ${filter==='active' ? 'bg-[#002a5d] text-white' : (isDark?'bg-[#27272a] text-[#a1a1aa] border border-[#3f3f46]':'bg-[#f3f4f6] text-gray-700 border border-gray-200')}`}>Em Andamento</button>
+           <button onClick={()=>setFilter('done')} className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap active:scale-95 transition-transform ${filter==='done' ? 'bg-[#002a5d] text-white' : (isDark?'bg-[#27272a] text-[#a1a1aa] border border-[#3f3f46]':'bg-[#f3f4f6] text-gray-700 border border-gray-200')}`}>Concluídos</button>
+        </div>
+
+        {filtered.length === 0 ? <p className="opacity-50 text-center py-10 font-medium">Nenhum pedido encontrado.</p> : (
+          <div className="flex flex-col gap-4">
+             {filtered.map(a => {
+               const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
+                 pending: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
+                 approved: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
+                 completed: { label: 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
+                 cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#fee2e2' : '#fee2e2', badgeText: '#991b1b' }
+               };
+               const cfg = stCfg[a.status] || stCfg.pending;
+               const pro = pros.find((p:any) => p.id === a.professionalId);
+               
+               const rawDate = a.date.split('-'); 
+               const fmtDate = rawDate.length === 3 ? `${rawDate[2]} ${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(rawDate[1])-1]}` : a.date;
+               
+               return (
+                 <div key={a.id} className={`relative overflow-hidden rounded-2xl border shadow-sm p-4 flex flex-col gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                   <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{backgroundColor: cfg.border}} />
+                   <div className="flex justify-between items-start pl-1">
+                     <div className="flex gap-3">
+                       {user.role === 'client' && pro?.avatarUrl ? (
+                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"><img src={pro.avatarUrl} className="w-full h-full object-cover"/></div>
+                       ) : <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center shrink-0"><Icon name="person" className="opacity-50" /></div>}
+                       <div>
+                         <div className="flex items-center gap-1 mb-0.5">
+                           <h3 className="font-bold text-[15px]">{user.role === 'client' ? pro?.name : a.clientName}</h3>
+                           {user.role === 'client' && pro?.verified && <Icon name="verified" size={14} className="text-[#2563eb]" fill />}
+                         </div>
+                         <p className={`text-xs font-medium ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{a.serviceTitle}</p>
+                       </div>
+                     </div>
+                     <span className="px-2 py-1 rounded text-[10px] font-bold shrink-0" style={{backgroundColor: cfg.badgeBg, color: cfg.badgeText}}>{cfg.label}</span>
+                   </div>
+                   
+                   <div className={`mt-2 pt-3 border-t flex justify-between items-center pl-1 ${isDark?'border-[#3f3f46]':'border-[#e5e7eb]'}`}>
+                     <p className={`text-xs font-medium ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>
+                       {a.status==='cancelled'?'Data original:':(a.status==='completed'?'Realizado:':'Agendado:')} {fmtDate}, {a.time}
+                     </p>
+                     <span className={`font-black text-sm ${a.status==='cancelled'?'line-through opacity-50':(isDark?'text-[#60a5fa]':'text-[#002a5d]')}`}>
+                       R$ {a.price.toFixed(2)}
+                     </span>
+                   </div>
+
+                   {/* Pro Controls */}
+                   {user.role === 'professional' && a.status === 'approved' && (
+                     <div className="flex gap-2 mt-2">
+                       <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Marcar Concluído</button>
+                     </div>
+                   )}
+                   {user.role === 'professional' && a.status === 'pending' && (
+                     <div className="flex gap-2 mt-2">
+                       <button onClick={()=>updateStatus(a.id, 'approved')} className="flex-1 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Aceitar</button>
+                       <button onClick={()=>updateStatus(a.id, 'cancelled')} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-xs font-bold active:scale-95">Recusar</button>
+                     </div>
+                   )}
+                   
+                   {/* Client Controls */}
+                   {user.role === 'client' && a.status === 'completed' && !a.reviewed && (
+                     <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Serviço</button>
+                   )}
+                 </div>
+               )
+             })}
+          </div>
+        )}
       </div>
       <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} />}</AnimatePresence>
     </div>
-  );
+  )
 }
 
 function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }: any) {
@@ -1007,28 +1248,75 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
   
   const dayOfWeek = d ? new Date(d + 'T00:00:00').getDay() : -1;
   const isDayAvailable = svc.availableDays ? svc.availableDays.includes(dayOfWeek) : true;
-  const availableHours = svc.availableHours?.length > 0 ? svc.availableHours : ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00'];
+  const availableHours = svc.availableHours?.length > 0 ? svc.availableHours : ['08:00','09:30','11:00','14:00','15:30','17:00'];
+
+  const getNextDays = () => {
+    const days = [];
+    const today = new Date();
+    for(let i=0; i<14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+
+  const nextDays = getNextDays();
 
   return (
     <>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
-        <h2 className="font-black text-2xl mb-1">Agendar</h2>
-        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{svc.title} - R$ {svc.price.toFixed(2)}</p>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-[#f8f9fa] dark:bg-[#121212] z-[100] overflow-y-auto hide-scrollbar pb-28">
         
-        <label className="text-xs font-bold mb-2 block opacity-70">Escolha a Data</label>
-        <input type="date" value={d} onChange={e=>{setD(e.target.value); setT('');}} min={new Date().toISOString().split('T')[0]} className={`w-full border rounded-xl py-4 px-4 mb-4 outline-none font-medium ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+        <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
+          <button onClick={onClose} className="p-2"><Icon name="arrow_back" className="text-[#002a5d] dark:text-white" /></button>
+          <h1 className="font-black text-xl text-[#002a5d] dark:text-white tracking-tight">Confirmar Agendamento</h1>
+        </header>
         
-        {d && !isDayAvailable && (
-          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold mb-6 text-center">
-            O profissional não atende neste dia da semana.
+        <div className="p-4">
+          <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] p-4 flex gap-4 mb-6 shadow-sm">
+            <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 relative">
+               <img src={svc.pro.avatarUrl} className="w-full h-full object-cover" />
+               {svc.pro.verified && <div className="absolute top-2 right-2 p-0.5 bg-white rounded-full flex items-center justify-center"><Icon name="verified" size={16} className="text-blue-600" fill/></div>}
+            </div>
+            <div className="flex flex-col justify-center">
+               <h3 className="font-black text-lg text-gray-900 dark:text-white leading-tight mb-1">{svc.pro.name}</h3>
+               <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{svc.title}</p>
+               <div className="flex items-center gap-1 text-xs font-bold text-[#f97316]">
+                  <Icon name="star" size={14} fill/> {svc.pro.rating.toFixed(1)} 
+                  <span className="font-normal ml-1 text-gray-500">({svc.pro.reviewsCount || 0} avaliações)</span>
+               </div>
+            </div>
           </div>
-        )}
 
-        {d && isDayAvailable && (
-          <>
-            <label className="text-xs font-bold mb-2 block opacity-70">Escolha o Horário</label>
-            <div className="flex flex-wrap gap-2 mb-6 max-h-[160px] overflow-y-auto hide-scrollbar">
+          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Escolha a Data</h2>
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 mb-6">
+            {nextDays.map(date => {
+              const iso = date.toISOString().split('T')[0];
+              const isSelected = d === iso;
+              const weekDay = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][date.getDay()];
+              const dayNum = date.getDate();
+              return (
+                <button 
+                  key={iso} 
+                  onClick={() => { setD(iso); setT(''); }}
+                  className={`w-[72px] shrink-0 aspect-[3/4] rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-600 dark:border-blue-400' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}
+                >
+                  <span className={`text-xs font-bold ${isSelected ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`}>{weekDay}</span>
+                  <span className={`text-xl font-black ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>{dayNum}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Horários Disponíveis</h2>
+          {!d ? (
+            <p className="text-sm text-gray-500 font-medium">Selecione uma data para ver os horários.</p>
+          ) : !isDayAvailable ? (
+            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold text-center">
+              O profissional não atende neste dia.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 mb-6">
               {availableHours.map((h: string) => {
                 const isOccupied = occupiedTimes.includes(h);
                 const isSelected = t === h;
@@ -1037,20 +1325,26 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
                     key={h} 
                     disabled={isOccupied} 
                     onClick={()=>setT(h)} 
-                    className={`px-4 py-2.5 rounded-lg text-sm font-bold border transition-colors ${isOccupied ? 'opacity-30 bg-gray-200 dark:bg-gray-800 border-transparent cursor-not-allowed' : isSelected ? 'bg-[#f97316] text-black border-[#f97316]' : (isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-800')}`}
+                    className={`py-3 rounded-xl text-sm font-bold border transition-colors ${isOccupied ? 'opacity-30 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-[#2a2a2a] cursor-not-allowed text-gray-400' : isSelected ? 'bg-[#ffedd5] dark:bg-[#f97316] text-[#9a3412] dark:text-black border-[#f97316]' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a] text-gray-800 dark:text-gray-200'}`}
                   >
                     {h}
                   </button>
                 );
               })}
             </div>
-          </>
-        )}
-
-        <button onClick={() => onBook(d,t)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-2xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
+          )}
+        </div>
+        
+        <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Valor da Visita</span>
+            <span className="font-black text-lg text-[#002a5d] dark:text-[#60a5fa]">R$ {svc.price.toFixed(2)}</span>
+          </div>
+          <button onClick={() => onBook(d,t)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
+        </div>
       </motion.div>
     </>
-  );
+  )
 }
 
 function ReviewModal({ a, onClose, onSubmit, isDark }: any) {
