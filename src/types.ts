@@ -8,39 +8,32 @@ export interface AppUser {
   role: UserRole;
   avatarInitial: string;
   avatarUrl?: string;
-  profession?: string;
-  categoryId?: string;
-  cpfCnpj?: string;
-  password?: string;
-  favorites?: string[]; // IDs dos profissionais favoritos
+  favorites: string[];
   createdAt: string;
+  cpfCnpj?: string;
+  phone?: string;
+  region?: string;
 }
 
 export interface ProfService {
   id: string;
-  professionalId: string;
   title: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
+  duration?: string; // e.g. "2 horas", "Em até 3 dias"
   price: number;
-  duration?: number; // minutos
 }
 
-export interface Professional {
-  id: string;
-  name: string;
+export interface Professional extends AppUser {
   profession: string;
   description: string;
   categoryId: string;
-  avatarUrl: string;
-  coverUrl: string;
-  portfolio?: string[]; // Galeria de fotos
+  coverUrl?: string;
   rating: number;
   reviewsCount: number;
   verified: boolean;
   activeSubscription: boolean;
   services: ProfService[];
-  location?: string;
 }
 
 export interface Appointment {

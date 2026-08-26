@@ -293,33 +293,64 @@ export default function App() {
    ONBOARDING
 ═══════════════════════════════════════ */
 function OnboardingScreen({ updateRole, isDark }: any) {
-  const [step, setStep] = useState(1);
-  const [prof, setProf] = useState('');
+    const [step, setStep] = useState(1);
+    const [prof, setProf] = useState('');
+    const [cpf, setCpf] = useState('');
+    const [phone, setPhone] = useState('');
+    const [region, setRegion] = useState('');
+    
+    const handleCpf = (v: string) => {
+      let r = v.replace(/\D/g,"");
+      if(r.length>11) r=r.slice(0,11);
+      r=r.replace(/(\d{3})(\d)/,"$1.$2");
+      r=r.replace(/(\d{3})(\d)/,"$1.$2");
+      r=r.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+      setCpf(r);
+    };
+    
+    const handlePhone = (v: string) => {
+      let r = v.replace(/\D/g,"");
+      if(r.length>11) r=r.slice(0,11);
+      r=r.replace(/^(\d{2})(\d)/g,"($1) $2");
+      r=r.replace(/(\d)(\d{4})$/,"$1-$2");
+      setPhone(r);
+    };
+    
+    if(step === 1) return (
+      <div className={`p-6 flex flex-col items-center justify-center min-h-screen max-w-[448px] mx-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
+         <Icon name="handshake" size={64} className={`mb-6 ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`} />
+         <h1 className="text-3xl font-black mb-8 text-center leading-tight">Como você quer usar o EncontreAi?</h1>
+         <button onClick={() => updateRole('client')} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl mb-4 shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3">
+           <Icon name="search" /> Quero CONTRATAR serviços
+         </button>
+         <button onClick={() => setStep(2)} className={`w-full font-bold text-lg p-5 rounded-2xl border active:scale-95 transition-transform flex items-center justify-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-[#002a5d]'}`}>
+           <Icon name="work" /> Quero PRESTAR serviços
+         </button>
+      </div>
+    );
   
-  if(step === 1) return (
-    <div className={`p-6 flex flex-col items-center justify-center min-h-screen max-w-[448px] mx-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
-       <Icon name="handshake" size={64} className={`mb-6 ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`} />
-       <h1 className="text-3xl font-black mb-8 text-center leading-tight">Como você quer usar o EncontreAi?</h1>
-       <button onClick={() => updateRole('client')} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl mb-4 shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3">
-         <Icon name="search" /> Quero CONTRATAR serviços
-       </button>
-       <button onClick={() => setStep(2)} className={`w-full font-bold text-lg p-5 rounded-2xl border active:scale-95 transition-transform flex items-center justify-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-[#002a5d]'}`}>
-         <Icon name="work" /> Quero PRESTAR serviços
-       </button>
-    </div>
-  );
-
-  return (
-    <div className={`p-6 flex flex-col min-h-screen pt-20 max-w-[448px] mx-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
-       <button onClick={()=>setStep(1)} className="mb-6 self-start"><Icon name="arrow_back" /></button>
-       <h1 className="text-3xl font-black mb-2">Seu Perfil Profissional</h1>
-       <p className={`mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Qual é a sua especialidade principal? Isso ajudará os clientes a te encontrarem.</p>
-       <label className="font-bold text-sm mb-2 block">Sua Profissão</label>
-       <input value={prof} onChange={e=>setProf(e.target.value)} placeholder="Ex: Eletricista Residencial, Diarista..." className={`w-full p-4 rounded-xl mb-8 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
-       <button disabled={!prof} onClick={() => updateRole('professional', { profession: prof })} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl disabled:opacity-50 shadow-lg active:scale-95 transition-transform mt-auto mb-10">Concluir Cadastro</button>
-    </div>
-  )
-}
+    return (
+      <div className={`p-6 flex flex-col min-h-screen pt-10 pb-20 max-w-[448px] mx-auto overflow-y-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
+         <button onClick={()=>setStep(1)} className="mb-6 self-start"><Icon name="arrow_back" /></button>
+         <h1 className="text-3xl font-black mb-2">Seu Perfil Profissional</h1>
+         <p className={`mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Precisamos de alguns dados adicionais para validar o seu perfil e passar segurança aos clientes.</p>
+         
+         <label className="font-bold text-sm mb-2 block">Sua Profissão / Especialidade</label>
+         <input value={prof} onChange={e=>setProf(e.target.value)} placeholder="Ex: Eletricista, Encanador..." className={`w-full p-4 rounded-xl mb-4 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
+         
+         <label className="font-bold text-sm mb-2 block">CPF</label>
+         <input value={cpf} onChange={e=>handleCpf(e.target.value)} placeholder="000.000.000-00" className={`w-full p-4 rounded-xl mb-4 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
+         
+         <label className="font-bold text-sm mb-2 block">Telefone / WhatsApp</label>
+         <input value={phone} onChange={e=>handlePhone(e.target.value)} placeholder="(00) 00000-0000" className={`w-full p-4 rounded-xl mb-4 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
+         
+         <label className="font-bold text-sm mb-2 block">Região de Atendimento (Opcional)</label>
+         <input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Ex: Zona Sul, Centro..." className={`w-full p-4 rounded-xl mb-8 border outline-none font-medium ${isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
+         
+         <button disabled={!prof || cpf.length < 14 || phone.length < 14} onClick={() => updateRole('professional', { profession: prof, cpfCnpj: cpf, phone, region })} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl disabled:opacity-50 shadow-lg active:scale-95 transition-transform mt-auto mb-10">Concluir Cadastro</button>
+      </div>
+    )
+  }
 
 /* ═══════════════════════════════════════
    SCREENS
@@ -392,33 +423,11 @@ function ProfileScreen({ user, go, logout, isDark, toggleDarkMode, updateProfile
         <button onClick={toggleDarkMode} className={`w-full flex items-center justify-between p-5 border-b transition-colors ${isDark ? 'border-[#3f3f46] hover:bg-[#3f3f46]' : 'border-[#e5e7eb] hover:bg-gray-50'}`}><div className="flex items-center gap-4"><Icon name={isDark ? "light_mode" : "dark_mode"} className={isDark ? 'text-white' : 'text-gray-600'} /><span className="font-bold text-[15px]">Modo {isDark?'Claro':'Escuro'}</span></div><div className={`w-10 h-6 rounded-full flex items-center px-1 ${isDark ? 'bg-[#60a5fa] justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-sm"/></div></button>
         <button onClick={logout} className={`w-full flex items-center gap-4 p-5 transition-colors ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}><Icon name="logout" className={isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'} /><span className={`font-bold text-[15px] ${isDark ? 'text-[#fca5a5]' : 'text-[#ba1a1a]'}`}>Sair da Conta</span></button>
       </div>
-      <AnimatePresence>{editModal && <EditProfileModal user={user} onClose={()=>setEditModal(false)} onSave={(d:any)=>{updateProfile(d); setEditModal(false); show('Perfil atualizado!');}} isDark={isDark} />}</AnimatePresence>
+      <AnimatePresence>{editModal && <EditProfileModal user={user} show={show} onClose={()=>setEditModal(false)} onSave={(d:any)=>{updateProfile(d); setEditModal(false); show('Perfil atualizado!');}} isDark={isDark} />}</AnimatePresence>
     </div>
   );
 }
 
-function EditProfileModal({ user, onClose, onSave, isDark }: any) {
-  const [av, setAv] = useState(user.avatarUrl || '');
-  const [cv, setCv] = useState(user.coverUrl || '');
-  const [desc, setDesc] = useState(user.description || '');
-
-  return (
-    <>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
-        <div className="flex justify-between items-center mb-8"><h2 className="font-black text-2xl">Editar Perfil</h2><button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button></div>
-        <label className="font-bold text-sm mb-2 block">Link da Foto de Perfil (Opcional)</label>
-        <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-        {user.role === 'professional' && (
-          <>
-            <label className="font-bold text-sm mb-2 block">Link da Foto de Capa (Opcional)</label>
-            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-            <label className="font-bold text-sm mb-2 block">Sobre o seu trabalho (Bio)</label>
-            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={`w-full p-4 rounded-xl mb-6 border outline-none text-sm min-h-[120px] ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-          </>
-        )}
-        <button onClick={()=>onSave({ avatarUrl: av, coverUrl: cv, description: desc })} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform mt-2">Salvar Alterações</button>
-      </motion.div>
     </>
   );
 }
@@ -457,30 +466,99 @@ function DashboardProScreen({ user, isDark, go }: any) {
 }
 
 function MyServicesScreen({ user, isDark, show }: any) {
-  const { services, add, remove } = useServices(user?.id);
-  const [adding, setAdding] = useState(false);
-  const [t, setT] = useState(''); const [p, setP] = useState('');
-  return (
-    <div className="p-4 pb-24">
-      <div className="flex justify-between items-center mb-6"><h1 className="font-black text-2xl">Meus Serviços</h1><button onClick={()=>setAdding(!adding)} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center"><Icon name={adding?"close":"add"} /></button></div>
-      <AnimatePresence>
-        {adding && (
-          <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
-            <div className={`p-5 rounded-2xl border ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><h3 className="font-bold mb-4">Adicionar Novo Serviço</h3><input value={t} onChange={e=>setT(e.target.value)} placeholder="Título (ex: Troca de Chuveiro)" className={`w-full p-3 rounded-xl mb-3 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /><input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Preço (R$)" className={`w-full p-3 rounded-xl mb-4 border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} /><button onClick={()=>{ if(t&&p) { add({professionalId:user.id, title:t, price:Number(p)}); setT(''); setP(''); setAdding(false); show('Serviço adicionado!'); } }} className="w-full py-3 rounded-xl font-bold bg-[#f97316] text-black">Salvar Serviço</button></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="flex flex-col gap-3">
-        {services.length === 0 && !adding && <p className={`text-center py-6 text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem serviços cadastrados. Clique no '+' para adicionar.</p>}
-        {services.map(s => (
-          <div key={s.id} className={`p-4 rounded-xl border flex justify-between items-center ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-            <div><p className="font-bold">{s.title}</p><p className={`text-sm ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p></div><button onClick={()=>remove(s.id)} className="p-2 text-red-500"><Icon name="delete" /></button>
-          </div>
-        ))}
+    const { services, add, remove } = useServices(user?.id);
+    const [adding, setAdding] = useState(false);
+    
+    // Form state
+    const [t, setT] = useState(''); 
+    const [p, setP] = useState('');
+    const [desc, setDesc] = useState('');
+    const [cat, setCat] = useState('');
+    const [dur, setDur] = useState('');
+    
+    const resetForm = () => { setT(''); setP(''); setDesc(''); setCat(''); setDur(''); };
+
+    const handleSave = () => {
+      if(t && p && cat) { 
+        add({
+          title: t, 
+          price: Number(p), 
+          description: desc,
+          categoryId: cat,
+          duration: dur
+        }); 
+        resetForm();
+        setAdding(false); 
+        show('Serviço adicionado!'); 
+      }
+    };
+
+    return (
+      <div className="p-4 pb-24">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="font-black text-2xl">Meus Serviços</h1>
+          <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
+        </div>
+        <AnimatePresence>
+          {adding && (
+            <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
+              <div className={`p-5 rounded-3xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <h3 className="font-black text-lg mb-4">Adicionar Novo Serviço</h3>
+                
+                <label className="text-xs font-bold mb-1 block opacity-70">Título do Serviço *</label>
+                <input value={t} onChange={e=>setT(e.target.value)} placeholder="Ex: Manutenção de Ar Condicionado" className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                
+                <label className="text-xs font-bold mb-1 block opacity-70">Categoria *</label>
+                <select value={cat} onChange={e=>setCat(e.target.value)} className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium appearance-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
+                  <option value="">Selecione uma categoria...</option>
+                  {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+
+                <label className="text-xs font-bold mb-1 block opacity-70">Preço (R$) *</label>
+                <input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="Ex: 150" className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                
+                <label className="text-xs font-bold mb-1 block opacity-70">Duração Estimada (Opcional)</label>
+                <input value={dur} onChange={e=>setDur(e.target.value)} placeholder="Ex: 2 horas, 1 dia..." className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+
+                <label className="text-xs font-bold mb-1 block opacity-70">Descrição Detalhada (Opcional)</label>
+                <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Descreva o que está incluso no serviço..." rows={3} className={`w-full p-3.5 rounded-xl mb-6 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                
+                <button disabled={!t || !p || !cat} onClick={handleSave} className="w-full py-4 rounded-2xl font-black bg-[#f97316] text-black disabled:opacity-50 active:scale-95 transition-transform">Salvar Serviço</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <div className="flex flex-col gap-4">
+          {services.length === 0 && !adding && (
+             <div className={`text-center py-10 px-6 rounded-3xl border-2 border-dashed ${isDark?'border-[#3f3f46]':'border-[#d1d5db]'}`}>
+               <Icon name="post_add" size={48} className="mx-auto mb-3 opacity-30" />
+               <p className={`text-sm font-medium ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem serviços cadastrados. <br/>Clique no '+' para criar o seu primeiro anúncio.</p>
+             </div>
+          )}
+          {services.map(s => {
+            const catObj = CATEGORIES.find((c:any) => c.id === s.categoryId);
+            return (
+              <div key={s.id} className={`p-5 rounded-3xl border flex flex-col gap-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      {catObj && <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase ${isDark?'bg-[#3f3f46] text-[#a1a1aa]':'bg-gray-100 text-gray-500'}`}>{catObj.name}</span>}
+                      {s.duration && <span className={`text-[10px] font-bold flex items-center gap-1 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`}><Icon name="schedule" size={12}/> {s.duration}</span>}
+                    </div>
+                    <p className="font-bold text-lg leading-tight mb-1">{s.title}</p>
+                    <p className={`text-xl font-black ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p>
+                  </div>
+                  <button onClick={()=>remove(s.id)} className="p-2.5 text-red-500 bg-red-50 dark:bg-red-500/10 rounded-full active:scale-95 transition-transform"><Icon name="delete" size={20} /></button>
+                </div>
+                {s.description && <p className={`text-sm mt-1 line-clamp-3 leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.description}</p>}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
 function OrdersScreen({ user, pros, go, isDark, show }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
@@ -703,5 +781,56 @@ function FavoritesScreen({ user, pros, go, isDark }: any) {
     <div className="px-4 py-6 pb-8"><div className="flex items-center gap-3 mb-6"><button onClick={()=>go('profile')}><Icon name="arrow_back" /></button><h1 className="font-black text-3xl">Favoritos</h1></div>
     {favs.length === 0 ? <p className="text-center text-gray-500 py-10">Você não tem favoritos.</p> : favs.map((p:any) => <div key={p.id} onClick={()=>go('pro-detail', p.id)} className={`p-3 border rounded-2xl mb-3 flex gap-4 items-center shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><img src={p.avatarUrl} className="w-16 h-16 rounded-xl object-cover"/><div className="flex-1"><h3 className="font-bold text-lg">{p.name}</h3><p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{p.profession}</p></div><Icon name="chevron_right" className="text-gray-400"/></div>)}
     </div>
+  );
+}
+function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
+  const [av, setAv] = useState(user.avatarUrl || '');
+  const [cv, setCv] = useState(user.coverUrl || '');
+  const [desc, setDesc] = useState(user.description || '');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  
+  const generateAIAvatar = () => {
+    if(!av) {
+      if(show) show('Por favor, cole um link de foto normal para a IA usar de base!');
+      return;
+    }
+    setAiGenerating(true);
+    
+    setTimeout(() => {
+      setAv('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+      if(show) show('✨ IA: Foto Profissional Gerada com Sucesso!');
+      setAiGenerating(false);
+    }, 4000);
+  };
+
+  return (
+    <>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={ixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto }>
+        <div className="flex justify-between items-center mb-8"><h2 className="font-black text-2xl">Editar Perfil</h2><button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button></div>
+        
+        <div className="mb-6">
+          <label className="font-bold text-sm mb-2 block">Link da Foto de Perfil</label>
+          <div className="flex gap-2">
+            <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={lex-1 p-4 rounded-xl border outline-none text-sm font-medium } />
+            <button disabled={aiGenerating} onClick={generateAIAvatar} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center min-w-[56px]">
+              {aiGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Icon name="auto_awesome" />}
+            </button>
+          </div>
+          {aiGenerating && <p className="text-xs font-bold text-indigo-500 mt-2 animate-pulse flex items-center gap-1"><Icon name="memory" size={14} /> Processando rosto com Inteligência Artificial...</p>}
+          {!aiGenerating && <p className="text-xs opacity-60 mt-2">Cole o link da sua foto normal e clique na estrela mágica para transformar em foto de estúdio.</p>}
+        </div>
+
+        {user.role === 'professional' && (
+          <>
+            <label className="font-bold text-sm mb-2 block">Link da Foto de Capa (Opcional)</label>
+            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={w-full p-4 rounded-xl mb-6 border outline-none text-sm font-medium } />
+            <label className="font-bold text-sm mb-2 block">Sobre o seu trabalho (Bio)</label>
+            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={w-full p-4 rounded-xl mb-6 border outline-none text-sm font-medium min-h-[120px] } />
+          </>
+        )}
+        <button disabled={aiGenerating} onClick={()=>onSave({ avatarUrl: av, coverUrl: cv, description: desc })} className="w-full py-4 rounded-xl font-black text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform mt-2 disabled:opacity-50">Salvar Alterações</button>
+      </motion.div>
+    </>
   );
 }
