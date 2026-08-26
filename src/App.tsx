@@ -343,7 +343,7 @@ function AppContent() {
           
         </div>
       </div>
-      {t.msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full font-bold shadow-xl z-[999]">{t.msg}</div>}
+      {t?.msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full font-bold shadow-xl z-[999]">{t.msg}</div>}
     </RoleContext.Provider>
   )
 }
@@ -506,9 +506,9 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
     if(found) { svc = found; pro = p; break; }
   }
   
+  const isFav = user?.favorites?.includes(pro?.id);
+  const { reviews } = useReviews(pro?.id);
   if(!svc) return <div className="p-8 text-center mt-20">Serviço não encontrado!</div>;
-  const isFav = user?.favorites?.includes(pro.id);
-  const { reviews } = useReviews(pro.id);
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
@@ -1073,24 +1073,28 @@ function AuthScreen({ loginWithGoogle, go, onOk, show }: any) {
   );
 }
 
-function ChatListScreen({ user, pros, go, isDark }: any) {
+function ChatListScreen({ user, pros, isDark }: any) {
+  const navigate = useNavigate();
   const { msgs } = useChat(user?.id);
-  const chatPartners = Array.from(new Set(msgs.map(m => m.senderId === user?.id ? m.receiverId : m.senderId)));
+  const chatPartners = Array.from(new Set(msgs.map((m:any) => m.senderId === user?.id ? m.receiverId : m.senderId)));
 
   return (
     <div className="p-4 pb-24">
-      <div className="flex items-center gap-3 mb-6"><button onClick={()=>go('home')}><Icon name="arrow_back" /></button><h1 className="font-black text-2xl">Mensagens</h1></div>
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={()=>navigate(-1)}><Icon name="arrow_back" /></button>
+        <h1 className="font-black text-2xl">Mensagens</h1>
+      </div>
       {chatPartners.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="forum" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhuma mensagem recente.</p></div>}
       <div className="flex flex-col gap-2">
-        {chatPartners.map(pid => {
-          const lastMsg = msgs.filter(m => m.participants.includes(pid)).pop();
+        {chatPartners.map((pid:any) => {
+          const lastMsg = msgs.filter((m:any) => m.participants.includes(pid)).pop();
           const partnerName = pros.find((p:any) => p.id === pid)?.name || 'Cliente';
           return (
-            <button key={pid} onClick={()=>go('chat-detail', {id: pid, name: partnerName})} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <button key={pid} onClick={()=>navigate(`/chat/${pid}`)} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
               <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-black shrink-0"><Icon name="person" /></div>
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-bold text-lg">{partnerName}</h3>
-                <p className={`text-sm truncate ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{lastMsg?.text}</p>
+                <p className={`text-sm truncate ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{(lastMsg as any)?.text}</p>
               </div>
               <Icon name="chevron_right" className={isDark?'text-[#a1a1aa]':'text-gray-400'} />
             </button>
@@ -1101,28 +1105,32 @@ function ChatListScreen({ user, pros, go, isDark }: any) {
   );
 }
 
-function ChatDetailScreen({ go, user, chatUser, isDark }: any) {
-  const { msgs, send } = useChat(user?.id); const [text, setText] = useState('');
-  const chatMsgs = msgs.filter(m => (m.senderId===user.id && m.receiverId===chatUser.id) || (m.senderId===chatUser.id && m.receiverId===user.id));
+function ChatDetailScreen({ user, isDark }: any) {
+  const navigate = useNavigate();
+  const { id: partnerId } = useParams();
+  const { msgs, send } = useChat(user?.id);
+  const [text, setText] = useState('');
+  const chatMsgs = msgs.filter((m:any) => (m.senderId===user?.id && m.receiverId===partnerId) || (m.senderId===partnerId && m.receiverId===user?.id));
+
   return (
     <div className={`flex flex-col h-screen ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-      <header className={`border-b p-4 flex items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}><button onClick={()=>go('chat-list')}><Icon name="arrow_back" /></button><h2 className="font-bold">{chatUser.name}</h2></header>
+      <header className={`border-b p-4 flex items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
+        <button onClick={()=>navigate(-1)}><Icon name="arrow_back" /></button>
+        <h2 className="font-bold">Conversa</h2>
+      </header>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {chatMsgs.map(m => ( <div key={m.id} className={`max-w-[80%] rounded-xl p-3 text-sm ${m.senderId === user.id ? 'bg-[#f97316] text-black self-end rounded-br-sm' : (isDark?'bg-[#3f3f46] text-white':'bg-[#e1e3e4] text-[#191c1d]') + ' self-start rounded-bl-sm'}`}>{m.text}</div> ))}
+        {chatMsgs.map((m:any) => (
+          <div key={m.id} className={`max-w-[80%] rounded-xl p-3 text-sm ${m.senderId === user?.id ? 'bg-[#f97316] text-black self-end rounded-br-sm' : (isDark?'bg-[#3f3f46] text-white':'bg-[#e1e3e4] text-[#191c1d]') + ' self-start rounded-bl-sm'}`}>{m.text}</div>
+        ))}
       </div>
-      <div className={`p-4 border-t flex gap-2 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}><input value={text} onChange={e=>setText(e.target.value)} placeholder="Mensagem..." className={`flex-1 border rounded-full px-4 outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} /><button onClick={()=>{ if(text) { send(chatUser.id, text); setText(''); } }} className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black"><Icon name="send" size={20} /></button></div>
+      <div className={`p-4 border-t flex gap-2 pb-8 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
+        <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&text&&partnerId){send(partnerId,text);setText('');}}} placeholder="Mensagem..." className={`flex-1 border rounded-full px-4 py-3 outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+        <button onClick={()=>{if(text&&partnerId){send(partnerId,text);setText('');}}} className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black"><Icon name="send" size={20} /></button>
+      </div>
     </div>
   );
 }
 
-function FavoritesScreen({ user, pros, go, isDark }: any) {
-  const favs = pros.filter((p:any) => user?.favorites?.includes(p.id));
-  return (
-    <div className="px-4 py-6 pb-8"><div className="flex items-center gap-3 mb-6"><button onClick={()=>go('profile')}><Icon name="arrow_back" /></button><h1 className="font-black text-3xl">Favoritos</h1></div>
-    {favs.length === 0 ? <p className="text-center text-gray-500 py-10">Você não tem favoritos.</p> : favs.map((p:any) => <div key={p.id} onClick={()=>go('pro-detail', p.id)} className={`p-3 border rounded-2xl mb-3 flex gap-4 items-center shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}><img src={p.avatarUrl} className="w-16 h-16 rounded-xl object-cover"/><div className="flex-1"><h3 className="font-bold text-lg">{p.name}</h3><p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{p.profession}</p></div><Icon name="chevron_right" className="text-gray-400"/></div>)}
-    </div>
-  );
-}
 function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
   const [av, setAv] = useState(user.avatarUrl || '');
   const [cv, setCv] = useState(user.coverUrl || '');
@@ -1175,6 +1183,7 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
     </>
   );
 }
+
 
 
 
