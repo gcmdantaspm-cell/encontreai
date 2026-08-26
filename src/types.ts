@@ -17,12 +17,16 @@ export interface AppUser {
 
 export interface ProfService {
   id: string;
+  professionalId?: string;
   title: string;
   description?: string;
   categoryId?: string;
-  duration?: string; // e.g. "2 horas", "Em até 3 dias"
+  duration?: string;
   price: number;
-  imageUrl?: string; // Foto do produto ou serviço
+  imageUrls?: string[]; // Array of base64 images (max 3)
+  paymentMethods?: string[]; // e.g. ['pix', 'credit', 'debit', 'cash']
+  availableDays?: number[]; // 0=Sun, 1=Mon...
+  availableHours?: string[]; // e.g. ['09:00', '10:00']
 }
 
 export interface Professional extends AppUser {
