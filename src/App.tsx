@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CATEGORIES, PROFESSIONALS, MOCK_REVIEWS, MOCK_COUPONS } from './data';
 import { Professional, UserRole, AppUser, ProfService, Appointment, Review, ChatMessage, Coupon } from './types';
 import { auth, db, googleProvider } from './firebase';
-import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
@@ -114,7 +114,7 @@ function useServices(pid?: string) {
   }, [pid]);
   useEffect(() => { load(); }, [load]);
 
-  const add = async (s: Omit<ProfService, 'id'>) => { await addDoc(collection(db, 'services'), s); load(); };
+  const add = async (s: Omit<ProfService, 'id' | 'professionalId'>) => { if(!pid) return; await addDoc(collection(db, 'services'), { ...s, professionalId: pid }); load(); };
   const remove = async (id: string) => { await deleteDoc(doc(db, 'services', id)); load(); };
   return { services, add, remove };
 }
@@ -278,7 +278,7 @@ function BottomBar({ isDark }: any) {
 }
 
 function AppContent() {
-  const { user, loading, authError, loginWithGoogle, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
+  const { user, loading, authError, loginWithGoogle, loginWithEmail, registerWithEmail, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
   const { pros } = useSearch();
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
@@ -326,7 +326,10 @@ function AppContent() {
                <Route path="/" element={<Navigate to="/busca" />} />
                <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
                <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
+               
                <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />
+               <Route path="/auth" element={<AuthScreen loginWithGoogle={loginWithGoogle} loginWithEmail={loginWithEmail} registerWithEmail={registerWithEmail} isDark={isDark} show={show} />} />
+
                
                <Route path="/servico/:id" element={<ServiceDetailScreen pros={pros} user={user} isDark={isDark} show={show} toggleFavorite={toggleFavorite} />} />
                
@@ -507,10 +510,12 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
   )
 }
 
-function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
+function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   const loc = useLocation();
+  const navigate = useNavigate();
   const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
   const [filter, setFilter] = useState('all');
+  const [bookingService, setBookingService] = useState<any>(null);
   
   const allServices = useMemo(() => {
     return pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));
@@ -546,52 +551,72 @@ function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
       </div>
       
       <div className="px-4">
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-6">
-           <button onClick={()=>setFilter('all')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='all' ? 'bg-[#f8f9fa] text-black border-[#002a5d]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-             <Icon name="location_on" size={16} /> Localização
-           </button>
-           <button onClick={()=>setFilter('price')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='price' ? 'bg-[#f8f9fa] text-black border-[#002a5d]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-             <Icon name="payments" size={16} /> Preço
-           </button>
-           <button onClick={()=>setFilter('rate')} className={`px-4 py-2 rounded-full font-bold text-sm border flex items-center gap-2 whitespace-nowrap active:scale-95 transition-transform shadow-sm ${filter==='rate' ? 'bg-[#e0e7ff] text-[#3730a3] border-[#3730a3]' : (isDark?'bg-[#27272a] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-             <Icon name="star" size={16} /> Avaliação: 4.5+
-           </button>
+        <div className="flex justify-between items-center mb-4">
+           <h2 className="font-black text-lg">Serviços em Destaque</h2>
+           <div className="flex gap-2">
+             <button onClick={()=>setFilter('price')} className={`px-3 py-1.5 rounded-full font-bold text-xs border active:scale-95 transition-transform ${filter==='price' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#f8f9fa] text-black border-[#002a5d]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+               Menor Preço
+             </button>
+             <button onClick={()=>setFilter('rate')} className={`px-3 py-1.5 rounded-full font-bold text-xs border flex items-center gap-1 active:scale-95 transition-transform ${filter==='rate' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#e0e7ff] text-[#3730a3] border-[#3730a3]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+               <Icon name="star" size={14} /> Top
+             </button>
+           </div>
         </div>
         
         {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {filtered.map((s:any) => {
             const isFav = user?.favorites?.includes(s.pro.id);
             return (
-              <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-stretch gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-                <div className="relative w-[120px] shrink-0 rounded-xl overflow-hidden">
-                  <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
-                  {s.pro.verified && <div className="absolute top-2 right-2 p-0.5 bg-blue-600 rounded text-white flex items-center justify-center shadow-sm"><Icon name="verified" size={12}/></div>}
+              <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
+                   <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
+                   <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
+                     <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
+                   </button>
                 </div>
-                <div className="flex flex-col flex-1 justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-0.5">
-                      <h3 className="font-bold text-[15px] leading-tight pr-2">{s.pro.name}</h3>
-                      <span className="flex items-center gap-0.5 text-xs font-bold text-[#f97316]">
-                        <Icon name="star" size={12} fill/> {s.pro.rating.toFixed(1)} 
-                      </span>
-                    </div>
-                    <p className={`text-xs font-medium line-clamp-2 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.title}</p>
-                  </div>
-                  <div className="mt-2 flex justify-between items-end">
-                    <div>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>A partir de</p>
-                      <span className={`font-black text-base whitespace-nowrap ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}<span className="text-xs font-normal text-gray-500">/visita</span></span>
-                    </div>
-                    <Link to={`/servico/${s.id}`} className="px-3 py-1.5 rounded-full bg-[#f97316] text-black text-xs font-bold shadow-sm active:scale-95 transition-transform">Ver Perfil</Link>
-                  </div>
+                
+                <div className="flex flex-col flex-1 h-[100px] justify-between py-0.5">
+                   <div>
+                      <h3 className={`font-bold text-[15px] leading-tight mb-1 line-clamp-1 ${isDark?'text-white':'text-[#002a5d]'}`}>{s.title}</h3>
+                      <Link to={`/servico/${s.id}`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
+                         <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                            <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
+                         </div>
+                         <span className={`text-xs font-medium ${isDark?'text-gray-300':'text-gray-700'}`}>{s.pro.name}</span>
+                         <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
+                            <Icon name="star" size={12} fill /> {s.pro.rating.toFixed(1)}
+                         </div>
+                      </Link>
+                   </div>
+
+                   <div className="flex justify-between items-end mt-auto">
+                      <span className={`font-black text-sm whitespace-nowrap ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
+                      <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService(s); }} className="px-3 py-1.5 bg-[#f97316] text-black font-black text-[11px] rounded-lg active:scale-95 transition-transform shadow-md">
+                        Agendar
+                      </button>
+                   </div>
                 </div>
               </div>
             )
           })}
         </div>
       </div>
+      
+      <AnimatePresence>
+        {bookingService && 
+          <BookingModal 
+             proId={bookingService.pro.id} 
+             svc={bookingService} 
+             onClose={()=>setBookingService(null)} 
+             onBook={async(d:any,t:any)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: bookingService.price, createdAt: new Date().toISOString() });
+                setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
+             }} 
+             isDark={isDark} 
+          />}
+      </AnimatePresence>
     </div>
   )
 }
@@ -599,225 +624,114 @@ function SearchScreen({ pros, isDark, user, toggleFavorite }: any) {
 function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [booking, setBooking] = useState(false);
+  const [bookingService, setBookingService] = useState<any>(null);
   
   const allServices = useMemo(() => pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p }))), [pros]);
-  const svc = allServices.find((s:any) => s.id === id);
-  const { reviews } = useReviews(svc?.pro?.id);
+  const initialSvc = allServices.find((s:any) => s.id === id);
+  const pro = initialSvc?.pro || pros.find((p:any) => p.id === id);
   
-  if (!svc) return <div className="p-8 text-center font-bold">Serviço não encontrado.</div>;
-  const isFav = user?.favorites?.includes(svc.pro.id);
+  const { reviews } = useReviews(pro?.id);
+  
+  if (!pro) return <div className="p-8 text-center font-bold">Profissional não encontrado.</div>;
+  const isFav = user?.favorites?.includes(pro.id);
 
   return (
-    <div className="bg-[#121212] min-h-screen text-white pb-24 overflow-y-auto hide-scrollbar relative">
-      <div className="relative h-[340px] w-full">
-        <img src={svc.imageUrls?.[0] || svc.imageUrl || svc.pro.avatarUrl} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#121212]"></div>
+    <div className={`min-h-screen pb-24 overflow-y-auto hide-scrollbar relative ${isDark?'bg-[#121212] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+      <div className={`relative h-[240px] w-full ${isDark?'bg-gray-800':'bg-gray-300'}`}>
+        <img src={pro.coverUrl || pro.avatarUrl} className="w-full h-full object-cover opacity-60" />
+        <div className={`absolute inset-0 bg-gradient-to-b ${isDark?'from-black/60 via-black/20 to-[#121212]':'from-black/50 via-black/10 to-[#f8f9fa]'}`}></div>
         
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
           <Icon name="arrow_back" className="text-white" />
         </button>
-        <button className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
-          <Icon name="notifications_none" className="text-white" />
+        <button onClick={() => toggleFavorite(pro.id)} className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
+          <Icon name="favorite" fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
         </button>
         
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="flex justify-between items-end mb-1">
-            <h1 className="font-black text-2xl leading-tight flex items-center gap-2">
-              {svc.pro.name}
-              {svc.pro.verified && <Icon name="verified" size={18} className="text-[#60a5fa]" fill />}
-            </h1>
-            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full text-xs font-bold text-[#f97316]">
-              <Icon name="star" size={14} fill/> {svc.pro.rating.toFixed(1)}
-            </div>
-          </div>
-          <p className="text-[#60a5fa] font-semibold text-sm">{svc.title}</p>
-          
-          <div className="mt-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">A partir de</p>
-            <span className="font-black text-[28px]">R$ {svc.price.toFixed(2)}<span className="text-sm font-normal text-gray-400">/visita</span></span>
+        <div className="absolute -bottom-10 left-4 flex items-end gap-4">
+          <div className={`w-24 h-24 rounded-full border-4 overflow-hidden ${isDark?'border-[#121212] bg-gray-800':'border-[#f8f9fa] bg-gray-200'}`}>
+            <img src={pro.avatarUrl} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
       
-      <div className="px-4 mt-6">
-        <h2 className="font-bold text-lg mb-2">Sobre o Serviço</h2>
-        <p className="text-sm text-gray-300 leading-relaxed mb-6">
-          {svc.description || 'Especialista em manutenção residencial, instalação de equipamentos e reparos em geral. Atendimento rápido e seguro.'}
-        </p>
-        
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="speed" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Rápido</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="security" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Seguro</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="lightbulb" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Luminárias</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="electrical_services" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Quadros</span>
-          </div>
+      <div className="px-4 mt-12 mb-6">
+        <div className="flex justify-between items-start mb-1">
+          <h1 className="font-black text-2xl leading-tight flex items-center gap-2">
+            {pro.name}
+            {pro.verified && <Icon name="verified" size={18} className="text-[#60a5fa]" fill />}
+          </h1>
         </div>
-        
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="font-bold text-lg">Avaliações</h2>
-          <button className="text-sm font-semibold text-[#60a5fa]">Ver todas</button>
-        </div>
-        
-        <div className="flex flex-col gap-4">
-          {reviews.length > 0 ? reviews.slice(0, 3).map((r:any) => (
-             <div key={r.id} className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
-               <div className="flex justify-between items-center mb-2">
-                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center">
-                     <Icon name="person" size={16} className="opacity-50" />
-                   </div>
-                   <h3 className="font-bold text-sm">{r.clientName}</h3>
-                 </div>
-                 <div className="flex gap-0.5 text-[#f97316]">
-                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={i<=r.rating} className={i>r.rating?'text-gray-600':''} />)}
-                 </div>
-               </div>
-               <p className="text-xs text-gray-300 leading-relaxed">{r.text}</p>
-             </div>
-          )) : (
-             <div className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
-               <div className="flex justify-between items-center mb-2">
-                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center"><Icon name="person" size={16} className="opacity-50" /></div>
-                   <h3 className="font-bold text-sm">Carlos Silva</h3>
-                 </div>
-                 <div className="flex gap-0.5 text-[#f97316]">
-                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={true} />)}
-                 </div>
-               </div>
-               <p className="text-xs text-gray-300 leading-relaxed">Serviço excelente! Mariana foi super pontual, resolveu o problema do quadro de luz rapidamente e foi muito atenciosa. Recomendo muito.</p>
-             </div>
-          )}
+        <p className={`font-medium text-sm mb-3 ${isDark?'text-gray-400':'text-gray-500'}`}>{pro.profession}</p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 text-[#f97316] font-bold text-sm">
+            <Icon name="star" size={16} fill/> {pro.rating.toFixed(1)} <span className={`font-normal ml-1 ${isDark?'text-gray-500':'text-gray-400'}`}>({pro.reviewsCount} avaliações)</span>
+          </div>
         </div>
       </div>
       
-      <div className="fixed bottom-0 left-0 w-full max-w-[448px] p-4 bg-gradient-to-t from-[#121212] via-[#121212] to-transparent z-50">
-        <button onClick={() => { if(!user) { show('Faça login primeiro!'); return; } setBooking(true); }} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] shadow-[0_4px_14px_rgba(249,115,22,0.4)] active:scale-95 transition-transform flex items-center justify-center gap-2">
-          Agendar Agora <Icon name="calendar_month" size={20} />
-        </button>
+      <div className="px-4 mb-8">
+        <h2 className="font-black text-lg mb-4">Serviços Oferecidos</h2>
+        {(!pro.services || pro.services.length === 0) ? (
+          <div className="text-center py-6 opacity-50">Nenhum serviço cadastrado.</div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pro.services.map((s:any) => (
+              <div key={s.id} className={`p-3 rounded-2xl border flex items-center gap-3 shadow-sm ${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}`}>
+                 <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-800 shrink-0">
+                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl} className="w-full h-full object-cover" />
+                 </div>
+                 <div className="flex-1">
+                   <h3 className="font-bold text-sm leading-tight mb-1">{s.title}</h3>
+                   <span className={`font-black text-sm ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
+                 </div>
+                 <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-md">
+                   <Icon name="calendar_month" size={18} />
+                 </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 mb-8">
+        <h2 className="font-black text-lg mb-4">Avaliações</h2>
+        {reviews.length === 0 ? <p className="opacity-50 text-sm">Ainda não há avaliações.</p> : (
+          <div className="flex flex-col gap-4">
+            {reviews.map((r:any) => (
+              <div key={r.id} className={`p-4 rounded-2xl border ${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-600 overflow-hidden text-xs flex items-center justify-center">
+                     {r.clientAvatarUrl ? <img src={r.clientAvatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={16} />}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm leading-none">{r.clientName}</h4>
+                    <div className="flex text-[#f97316] mt-0.5">
+                      {[...Array(5)].map((_,i) => <Icon key={i} name="star" size={10} fill={i<r.rating} />)}
+                    </div>
+                  </div>
+                </div>
+                <p className={`text-sm ${isDark?'text-gray-300':'text-gray-700'}`}>{r.comment}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
-      <AnimatePresence>{booking && <BookingModal proId={svc.pro.id} svc={svc} onClose={()=>setBooking(false)} onBook={async(d:any,t:any)=>{
-        await addDoc(collection(db, 'appointments'), { professionalId: svc.pro.id, clientId: user.id, clientName: user.name, serviceId: svc.id, serviceTitle: svc.title, date: d, time: t, status: 'pending', price: svc.price, createdAt: new Date().toISOString() });
-        setBooking(false); show('Agendamento solicitado!'); navigate('/pedidos');
-      }} isDark={true} />}</AnimatePresence>
-    </div>
-  )
-}
-
-function ProfileScreen({ user, logout, loginWithGoogle, toggleDarkMode, updateProfile, show, isDark }: any) {
-  const [editing, setEditing] = useState(false);
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-        <Icon name="person" size={64} className="opacity-20 mb-4" />
-        <h2 className="font-black text-2xl mb-2">Seu Perfil</h2>
-        <p className="text-sm opacity-60 mb-8">Faça login para gerenciar sua conta, endereços e meios de pagamento.</p>
-        <button onClick={loginWithGoogle} className="px-8 py-3 bg-[#f97316] text-black font-bold rounded-full shadow-lg active:scale-95 transition-transform">Entrar com Google</button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pb-8 overflow-y-auto hide-scrollbar">
-      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
-        </div>
-        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
-        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
-      </header>
-
-      <div className="px-4 mt-6 flex flex-col items-center">
-        <div className="relative">
-          <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-gray-800 border-4 border-[#002a5d] dark:border-blue-500 overflow-hidden shadow-md">
-            {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={48} className="opacity-50 m-auto h-full" />}
-          </div>
-          <button onClick={() => setEditing(true)} className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#002a5d] dark:bg-blue-600 text-white flex items-center justify-center border-2 border-white dark:border-[#18181b] shadow-sm">
-            <Icon name="edit" size={16} />
-          </button>
-        </div>
-        <h2 className="font-black text-2xl mt-4 mb-1">{user.name}</h2>
-        <p className="text-sm opacity-80 flex items-center gap-1 mb-1"><Icon name="mail" size={14} /> {user.email}</p>
-        <p className="text-sm opacity-80 flex items-center gap-1 mb-6"><Icon name="phone" size={14} /> {user.phone || '+55 11 98765-4321'}</p>
-      </div>
-
-      <div className="px-4 grid grid-cols-2 gap-3 mb-4">
-        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col gap-3 active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark?'bg-[#3f3f46]':'bg-blue-100'}`}>
-            <Icon name="location_on" className={isDark?'text-white':'text-[#002a5d]'} />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm">Endereços</h3>
-            <p className="text-[10px] opacity-70">Gerenciar locais</p>
-          </div>
-        </div>
-        <div className={`p-4 rounded-2xl border shadow-sm flex flex-col gap-3 active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark?'bg-[#3f3f46]':'bg-orange-100'}`}>
-            <Icon name="payment" className={isDark?'text-white':'text-orange-800'} />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm">Pagamentos</h3>
-            <p className="text-[10px] opacity-70">Cartões e contas</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 mb-4">
-        <div className={`p-4 rounded-2xl border shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-green-200 dark:bg-green-900 flex items-center justify-center">
-              <Icon name="favorite" className="text-green-800 dark:text-green-300" />
-            </div>
-            <div>
-              <h3 className="font-bold text-[15px]">Profissionais Favoritos</h3>
-              <p className="text-[11px] opacity-70">Seus prestadores de serviço salvos</p>
-            </div>
-          </div>
-          <Icon name="chevron_right" className="opacity-40" />
-        </div>
-      </div>
-
-      <div className="px-4 flex flex-col gap-3">
-        <div className={`rounded-2xl border shadow-sm overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-          <button className="w-full p-4 flex items-center gap-4 active:bg-black/5 dark:active:bg-white/5 border-b border-gray-100 dark:border-[#3f3f46]">
-            <Icon name="help_outline" className="opacity-70" />
-            <span className="flex-1 text-left font-bold text-sm">Central de Ajuda</span>
-            <Icon name="chevron_right" className="opacity-40" />
-          </button>
-          <button className="w-full p-4 flex items-center gap-4 active:bg-black/5 dark:active:bg-white/5 border-b border-gray-100 dark:border-[#3f3f46]">
-            <Icon name="settings" className="opacity-70" />
-            <span className="flex-1 text-left font-bold text-sm">Configurações</span>
-            <Icon name="chevron_right" className="opacity-40" />
-          </button>
-          <div className="w-full p-4 flex items-center gap-4">
-            <Icon name="dark_mode" className="opacity-70" />
-            <span className="flex-1 text-left font-bold text-sm">Modo Escuro</span>
-            <button onClick={toggleDarkMode} className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${isDark ? 'bg-[#002a5d] justify-end' : 'bg-gray-300 justify-start'}`}>
-              <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
-            </button>
-          </div>
-        </div>
-        
-        <button onClick={logout} className={`w-full p-4 rounded-2xl border shadow-sm flex items-center gap-4 active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-red-400':'bg-white border-[#e5e7eb] text-red-600'}`}>
-          <Icon name="logout" />
-          <span className="flex-1 text-left font-bold text-sm">Sair</span>
-        </button>
-      </div>
-      <AnimatePresence>{editing && <EditProfileModal user={user} onClose={()=>setEditing(false)} onSave={(d:any)=>{updateProfile(d); setEditing(false); show('Perfil atualizado!');}} isDark={isDark} show={show}/>}</AnimatePresence>
+      <AnimatePresence>
+        {bookingService && 
+          <BookingModal 
+            proId={pro.id} 
+            svc={bookingService} 
+            onClose={()=>setBookingService(null)} 
+            onBook={async(d:any,t:any)=>{
+              await addDoc(collection(db, 'appointments'), { professionalId: pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: bookingService.price, createdAt: new Date().toISOString() });
+              setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
+            }} 
+            isDark={isDark} 
+          />
+        }
+      </AnimatePresence>
     </div>
   )
 }
@@ -1365,12 +1279,54 @@ function ReviewModal({ a, onClose, onSubmit, isDark }: any) {
   );
 }
 
-function AuthScreen({ loginWithGoogle, go, onOk, show }: any) {
+function AuthScreen({ loginWithEmail, registerWithEmail, isDark, show }: any) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<'login'|'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('client');
+
   return (
-    <div className="p-4 flex flex-col items-center justify-center min-h-screen bg-[#18181b] text-white relative">
-      <button onClick={() => go('home')} className="absolute top-6 left-4 p-2"><Icon name="arrow_back" /></button>
-      <h1 className="text-4xl font-black mb-12 text-[#60a5fa] tracking-tight">EncontreAi</h1>
-      <button onClick={async () => { show('Conectando...', 'info'); const res = await loginWithGoogle(); if (res.ok) { show('Sucesso!'); onOk(); } else show(res.error, 'error'); }} className="bg-white text-black font-bold px-6 py-4 rounded-xl shadow-lg flex items-center gap-4 active:scale-95 transition-transform w-full max-w-xs justify-center mb-6"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>Entrar com Google</button>
+    <div className={`p-4 flex flex-col items-center justify-center min-h-screen relative ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+      <button onClick={() => navigate('/busca')} className="absolute top-6 left-4 p-2"><Icon name="arrow_back" /></button>
+      <h1 className={`text-4xl font-black mb-8 tracking-tight ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>EncontreAi</h1>
+      
+      <div className={`w-full max-w-sm rounded-3xl shadow-xl overflow-hidden ${isDark?'bg-[#27272a]':'bg-white'}`}>
+        <div className="flex">
+          <button onClick={() => setTab('login')} className={`flex-1 py-4 font-bold text-sm ${tab==='login' ? (isDark?'bg-[#3f3f46] text-white':'bg-gray-100 text-[#002a5d]') : (isDark?'text-gray-400':'text-gray-500')}`}>Entrar</button>
+          <button onClick={() => setTab('register')} className={`flex-1 py-4 font-bold text-sm ${tab==='register' ? (isDark?'bg-[#3f3f46] text-white':'bg-gray-100 text-[#002a5d]') : (isDark?'text-gray-400':'text-gray-500')}`}>Criar Conta</button>
+        </div>
+        
+        <div className="p-6 flex flex-col gap-4">
+          {tab === 'register' && (
+            <>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nome completo" className={`w-full p-3 rounded-xl border outline-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-gray-50 border-gray-200 text-black'}`} />
+              <select value={role} onChange={e=>setRole(e.target.value)} className={`w-full p-3 rounded-xl border outline-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-gray-50 border-gray-200 text-black'}`}>
+                 <option value="client">Sou Cliente</option>
+                 <option value="professional">Sou Profissional</option>
+              </select>
+            </>
+          )}
+          <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="E-mail" className={`w-full p-3 rounded-xl border outline-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-gray-50 border-gray-200 text-black'}`} />
+          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Senha" className={`w-full p-3 rounded-xl border outline-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-gray-50 border-gray-200 text-black'}`} />
+          
+          <button onClick={async () => { 
+             if(!email || !password) return show('Preencha os campos', 'error');
+             show('Aguarde...', 'info'); 
+             let res;
+             if (tab === 'login') {
+                res = await loginWithEmail(email, password);
+             } else {
+                if(!name) return show('Preencha o nome', 'error');
+                res = await registerWithEmail(email, password, name, role);
+             }
+             if (res.ok) { show('Sucesso!'); navigate('/perfil'); } else show(res.error, 'error'); 
+          }} className="w-full py-4 rounded-xl bg-[#f97316] text-black font-black mt-2 active:scale-95 transition-transform">
+            {tab === 'login' ? 'Entrar' : 'Cadastrar'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1498,3 +1454,49 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
 
 
 
+
+function ProfileScreen({ user, isDark, logout, toggleDarkMode, updateProfile, show }: any) {
+  const navigate = useNavigate();
+  if (!user) {
+    return (
+      <div className="p-8 text-center flex flex-col items-center justify-center min-h-screen">
+        <h2 className="font-bold text-xl mb-4">Você não está logado.</h2>
+        <button onClick={() => navigate('/auth')} className="bg-[#f97316] text-black font-bold px-6 py-3 rounded-xl shadow-lg">Entrar ou Cadastrar</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen pb-24 p-6 ${isDark ? 'bg-[#121212] text-white' : 'bg-[#f8f9fa] text-[#002a5d]'}`}>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="font-black text-3xl">Meu Perfil</h1>
+        <button onClick={toggleDarkMode} className="p-2 rounded-full border bg-opacity-20 active:scale-95 transition-transform">
+          <Icon name={isDark ? 'light_mode' : 'dark_mode'} />
+        </button>
+      </div>
+      
+      <div className={`p-6 rounded-3xl border shadow-sm flex flex-col items-center text-center mb-6 ${isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-[#e5e7eb]'}`}>
+        <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 mb-4 border-4 border-[#f97316]">
+          {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={48} className="opacity-50 mt-4" />}
+        </div>
+        <h2 className="font-bold text-xl mb-1">{user.name}</h2>
+        <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
+        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${user.role === 'professional' ? 'bg-[#3730a3] text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}>
+          {user.role === 'professional' ? 'Profissional' : 'Cliente'}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {user.role === 'professional' && (
+          <button onClick={() => navigate('/meus-servicos')} className={`p-4 rounded-xl border flex justify-between items-center font-bold active:scale-95 transition-transform ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
+            <span className="flex items-center gap-3"><Icon name="work" /> Meus Serviços</span>
+            <Icon name="chevron_right" />
+          </button>
+        )}
+        <button onClick={() => { logout(); navigate('/busca'); show('Desconectado.'); }} className={`p-4 rounded-xl border flex justify-between items-center font-bold text-red-500 active:scale-95 transition-transform ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
+          <span className="flex items-center gap-3"><Icon name="logout" /> Sair da conta</span>
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,130 +1,129 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/App.tsx', 'utf8');
 
-const regex = /function ServiceDetailScreen[\s\S]*?function ProfileScreen/
+const targetRegex = /function ServiceDetailScreen\(\{[\s\S]*?^function DashboardProScreen/m;
 
 const replacement = `function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [booking, setBooking] = useState(false);
+  const [bookingService, setBookingService] = useState<any>(null);
   
   const allServices = useMemo(() => pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p }))), [pros]);
-  const svc = allServices.find((s:any) => s.id === id);
-  const { reviews } = useReviews(svc?.pro?.id);
+  const initialSvc = allServices.find((s:any) => s.id === id);
+  const pro = initialSvc?.pro || pros.find((p:any) => p.id === id);
   
-  if (!svc) return <div className="p-8 text-center font-bold">Serviço não encontrado.</div>;
-  const isFav = user?.favorites?.includes(svc.pro.id);
+  const { reviews } = useReviews(pro?.id);
+  
+  if (!pro) return <div className="p-8 text-center font-bold">Profissional não encontrado.</div>;
+  const isFav = user?.favorites?.includes(pro.id);
 
   return (
-    <div className="bg-[#121212] min-h-screen text-white pb-24 overflow-y-auto hide-scrollbar relative">
-      <div className="relative h-[340px] w-full">
-        <img src={svc.imageUrls?.[0] || svc.imageUrl || svc.pro.avatarUrl} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#121212]"></div>
+    <div className={\`min-h-screen pb-24 overflow-y-auto hide-scrollbar relative \${isDark?'bg-[#121212] text-white':'bg-[#f8f9fa] text-[#002a5d]'}\`}>
+      <div className={\`relative h-[240px] w-full \${isDark?'bg-gray-800':'bg-gray-300'}\`}>
+        <img src={pro.coverUrl || pro.avatarUrl} className="w-full h-full object-cover opacity-60" />
+        <div className={\`absolute inset-0 bg-gradient-to-b \${isDark?'from-black/60 via-black/20 to-[#121212]':'from-black/50 via-black/10 to-[#f8f9fa]'}\`}></div>
         
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
           <Icon name="arrow_back" className="text-white" />
         </button>
-        <button className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md">
-          <Icon name="notifications_none" className="text-white" />
+        <button onClick={() => toggleFavorite(pro.id)} className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
+          <Icon name="favorite" fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
         </button>
         
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="flex justify-between items-end mb-1">
-            <h1 className="font-black text-2xl leading-tight flex items-center gap-2">
-              {svc.pro.name}
-              {svc.pro.verified && <Icon name="verified" size={18} className="text-[#60a5fa]" fill />}
-            </h1>
-            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full text-xs font-bold text-[#f97316]">
-              <Icon name="star" size={14} fill/> {svc.pro.rating.toFixed(1)}
-            </div>
-          </div>
-          <p className="text-[#60a5fa] font-semibold text-sm">{svc.title}</p>
-          
-          <div className="mt-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">A partir de</p>
-            <span className="font-black text-[28px]">R$ {svc.price.toFixed(2)}<span className="text-sm font-normal text-gray-400">/visita</span></span>
+        <div className="absolute -bottom-10 left-4 flex items-end gap-4">
+          <div className={\`w-24 h-24 rounded-full border-4 overflow-hidden \${isDark?'border-[#121212] bg-gray-800':'border-[#f8f9fa] bg-gray-200'}\`}>
+            <img src={pro.avatarUrl} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
       
-      <div className="px-4 mt-6">
-        <h2 className="font-bold text-lg mb-2">Sobre o Serviço</h2>
-        <p className="text-sm text-gray-300 leading-relaxed mb-6">
-          {svc.description || 'Especialista em manutenção residencial, instalação de equipamentos e reparos em geral. Atendimento rápido e seguro.'}
-        </p>
-        
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="speed" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Rápido</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="security" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Seguro</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="lightbulb" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Luminárias</span>
-          </div>
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-            <Icon name="electrical_services" size={18} className="text-[#60a5fa]" />
-            <span className="text-sm font-medium">Quadros</span>
-          </div>
+      <div className="px-4 mt-12 mb-6">
+        <div className="flex justify-between items-start mb-1">
+          <h1 className="font-black text-2xl leading-tight flex items-center gap-2">
+            {pro.name}
+            {pro.verified && <Icon name="verified" size={18} className="text-[#60a5fa]" fill />}
+          </h1>
         </div>
-        
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="font-bold text-lg">Avaliações</h2>
-          <button className="text-sm font-semibold text-[#60a5fa]">Ver todas</button>
-        </div>
-        
-        <div className="flex flex-col gap-4">
-          {reviews.length > 0 ? reviews.slice(0, 3).map((r:any) => (
-             <div key={r.id} className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
-               <div className="flex justify-between items-center mb-2">
-                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center">
-                     <Icon name="person" size={16} className="opacity-50" />
-                   </div>
-                   <h3 className="font-bold text-sm">{r.clientName}</h3>
-                 </div>
-                 <div className="flex gap-0.5 text-[#f97316]">
-                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={i<=r.rating} className={i>r.rating?'text-gray-600':''} />)}
-                 </div>
-               </div>
-               <p className="text-xs text-gray-300 leading-relaxed">{r.text}</p>
-             </div>
-          )) : (
-             <div className="p-4 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a]">
-               <div className="flex justify-between items-center mb-2">
-                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center"><Icon name="person" size={16} className="opacity-50" /></div>
-                   <h3 className="font-bold text-sm">Carlos Silva</h3>
-                 </div>
-                 <div className="flex gap-0.5 text-[#f97316]">
-                   {[1,2,3,4,5].map(i => <Icon key={i} name="star" size={12} fill={true} />)}
-                 </div>
-               </div>
-               <p className="text-xs text-gray-300 leading-relaxed">Serviço excelente! Mariana foi super pontual, resolveu o problema do quadro de luz rapidamente e foi muito atenciosa. Recomendo muito.</p>
-             </div>
-          )}
+        <p className={\`font-medium text-sm mb-3 \${isDark?'text-gray-400':'text-gray-500'}\`}>{pro.profession}</p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 text-[#f97316] font-bold text-sm">
+            <Icon name="star" size={16} fill/> {pro.rating.toFixed(1)} <span className={\`font-normal ml-1 \${isDark?'text-gray-500':'text-gray-400'}\`}>({pro.reviewsCount} avaliações)</span>
+          </div>
         </div>
       </div>
       
-      <div className="fixed bottom-0 left-0 w-full max-w-[448px] p-4 bg-gradient-to-t from-[#121212] via-[#121212] to-transparent z-50">
-        <button onClick={() => { if(!user) { show('Faça login primeiro!'); return; } setBooking(true); }} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] shadow-[0_4px_14px_rgba(249,115,22,0.4)] active:scale-95 transition-transform flex items-center justify-center gap-2">
-          Agendar Agora <Icon name="calendar_month" size={20} />
-        </button>
+      <div className="px-4 mb-8">
+        <h2 className="font-black text-lg mb-4">Serviços Oferecidos</h2>
+        {(!pro.services || pro.services.length === 0) ? (
+          <div className="text-center py-6 opacity-50">Nenhum serviço cadastrado.</div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pro.services.map((s:any) => (
+              <div key={s.id} className={\`p-3 rounded-2xl border flex items-center gap-3 shadow-sm \${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}\`}>
+                 <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-800 shrink-0">
+                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl} className="w-full h-full object-cover" />
+                 </div>
+                 <div className="flex-1">
+                   <h3 className="font-bold text-sm leading-tight mb-1">{s.title}</h3>
+                   <span className={\`font-black text-sm \${isDark?'text-[#60a5fa]':'text-blue-600'}\`}>R$ {s.price.toFixed(2)}</span>
+                 </div>
+                 <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-md">
+                   <Icon name="calendar_month" size={18} />
+                 </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 mb-8">
+        <h2 className="font-black text-lg mb-4">Avaliações</h2>
+        {reviews.length === 0 ? <p className="opacity-50 text-sm">Ainda não há avaliações.</p> : (
+          <div className="flex flex-col gap-4">
+            {reviews.map((r:any) => (
+              <div key={r.id} className={\`p-4 rounded-2xl border \${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}\`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-600 overflow-hidden text-xs flex items-center justify-center">
+                     {r.clientAvatarUrl ? <img src={r.clientAvatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={16} />}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm leading-none">{r.clientName}</h4>
+                    <div className="flex text-[#f97316] mt-0.5">
+                      {[...Array(5)].map((_,i) => <Icon key={i} name="star" size={10} fill={i<r.rating} />)}
+                    </div>
+                  </div>
+                </div>
+                <p className={\`text-sm \${isDark?'text-gray-300':'text-gray-700'}\`}>{r.comment}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
-      <AnimatePresence>{booking && <BookingModal proId={svc.pro.id} svc={svc} onClose={()=>setBooking(false)} onBook={async(d:any,t:any)=>{
-        await addDoc(collection(db, 'appointments'), { professionalId: svc.pro.id, clientId: user.id, clientName: user.name, serviceId: svc.id, serviceTitle: svc.title, date: d, time: t, status: 'pending', price: svc.price, createdAt: new Date().toISOString() });
-        setBooking(false); show('Agendamento solicitado!'); navigate('/pedidos');
-      }} isDark={true} />}</AnimatePresence>
+      <AnimatePresence>
+        {bookingService && 
+          <BookingModal 
+            proId={pro.id} 
+            svc={bookingService} 
+            onClose={()=>setBookingService(null)} 
+            onBook={async(d:any,t:any)=>{
+              await addDoc(collection(db, 'appointments'), { professionalId: pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: bookingService.price, createdAt: new Date().toISOString() });
+              setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
+            }} 
+            isDark={isDark} 
+          />
+        }
+      </AnimatePresence>
     </div>
   )
 }
 
-function ProfileScreen`;
+function DashboardProScreen`;
 
-code = code.replace(regex, replacement);
-fs.writeFileSync('src/App.tsx', code);
+if (code.match(targetRegex)) {
+  code = code.replace(targetRegex, replacement);
+  fs.writeFileSync('src/App.tsx', code);
+  console.log("Replaced ServiceDetailScreen");
+} else {
+  console.log("Did not match regex ServiceDetailScreen");
+}

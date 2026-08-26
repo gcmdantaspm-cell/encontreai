@@ -58,40 +58,38 @@ const replacement = `function SearchScreen({ pros, isDark, user, toggleFavorite,
         
         {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
           {filtered.map((s:any) => {
             const isFav = user?.favorites?.includes(s.pro.id);
             return (
-              <div key={s.id} className={\`flex flex-col rounded-3xl border overflow-hidden relative shadow-sm \${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}\`}>
-                <div className="w-full h-[180px] bg-gray-200 dark:bg-gray-800 relative">
+              <div key={s.id} className={\`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 \${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}\`}>
+                <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
                    <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
-                   <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
-                     <Icon name="favorite" fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
+                   <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
+                     <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
                    </button>
                 </div>
                 
-                <div className="p-4 flex flex-col">
-                   <div className="flex justify-between items-start mb-4">
-                      <h3 className={\`font-bold text-lg leading-tight \${isDark?'text-white':'text-[#002a5d]'}\`}>{s.title}</h3>
-                      <span className={\`font-black text-[17px] whitespace-nowrap ml-2 \${isDark?'text-[#60a5fa]':'text-blue-600'}\`}>R$ {s.price.toFixed(2)}</span>
-                   </div>
-                   
-                   <div className="flex justify-between items-center mb-5">
-                      <Link to={\`/servico/\${s.id}\`} className="flex items-center gap-2 active:opacity-70 transition-opacity">
-                         <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                <div className="flex flex-col flex-1 h-[100px] justify-between py-0.5">
+                   <div>
+                      <h3 className={\`font-bold text-[15px] leading-tight mb-1 line-clamp-1 \${isDark?'text-white':'text-[#002a5d]'}\`}>{s.title}</h3>
+                      <Link to={\`/servico/\${s.id}\`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
+                         <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
                             <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
                          </div>
-                         <span className={\`text-sm font-medium \${isDark?'text-gray-300':'text-gray-700'}\`}>{s.pro.name}</span>
+                         <span className={\`text-xs font-medium \${isDark?'text-gray-300':'text-gray-700'}\`}>{s.pro.name}</span>
+                         <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
+                            <Icon name="star" size={12} fill /> {s.pro.rating.toFixed(1)}
+                         </div>
                       </Link>
-                      <div className="flex items-center gap-1 text-[#f97316] font-bold text-sm">
-                         <Icon name="star" size={16} fill />
-                         {s.pro.rating.toFixed(1)}
-                      </div>
                    </div>
 
-                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService(s); }} className="w-full py-3.5 bg-[#f97316] text-black font-black text-[15px] rounded-xl active:scale-95 transition-transform shadow-md flex items-center justify-center gap-2">
-                     Agendar Agora <Icon name="calendar_month" size={18} />
-                   </button>
+                   <div className="flex justify-between items-end mt-auto">
+                      <span className={\`font-black text-sm whitespace-nowrap \${isDark?'text-[#60a5fa]':'text-blue-600'}\`}>R$ {s.price.toFixed(2)}</span>
+                      <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService(s); }} className="px-3 py-1.5 bg-[#f97316] text-black font-black text-[11px] rounded-lg active:scale-95 transition-transform shadow-md">
+                        Agendar
+                      </button>
+                   </div>
                 </div>
               </div>
             )
@@ -119,9 +117,9 @@ const replacement = `function SearchScreen({ pros, isDark, user, toggleFavorite,
 function ServiceDetailScreen`;
 
 if (code.match(targetRegex)) {
-  console.log('Regex matched!');
   code = code.replace(targetRegex, replacement);
   fs.writeFileSync('src/App.tsx', code);
+  console.log("Replaced SearchScreen");
 } else {
-  console.log('Regex did NOT match!');
+  console.log("Did not match regex SearchScreen");
 }
