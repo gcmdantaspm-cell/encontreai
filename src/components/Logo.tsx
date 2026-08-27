@@ -1,11 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function Logo({ className = "", isDark = false, hideText = false, hideSubtitle = false }: { className?: string, isDark?: boolean, hideText?: boolean, hideSubtitle?: boolean }) {
   const primaryColor = isDark ? "#ffffff" : "#002a5d";
-  const subtitleColor = isDark ? "#a1a1aa" : "#64748b";
+  const subtitleColor = isDark ? '#a1a1aa' : '#64748b';
+  const navigate = useNavigate();
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div onClick={() => navigate('/')} className={`flex items-center gap-2 cursor-pointer ${className}`}>
       <svg width={hideSubtitle ? "32" : "40"} height={hideSubtitle ? "38" : "48"} viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
         <defs>
           <mask id="pin-mask">

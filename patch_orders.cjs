@@ -1,57 +1,15 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/App.tsx', 'utf8');
 
-code = code.replace(
-  "const submitReview = async (rating: number, text: string) => {",
-  `const submitReview = async (rating: number, text: string) => {
-    if (user.role === 'professional') {
-      await addDoc(collection(db, 'reviews'), {
-        professionalId: user.id, clientId: reviewModal.clientId, professionalName: user.name, rating, text, createdAt: new Date().toISOString(), type: 'pro_to_client'
-      });
-      await updateDoc(doc(db, 'appointments', reviewModal.id), { proReviewed: true });
-      const clientRef = doc(db, 'users', reviewModal.clientId);
-      const clientSnap = await getDoc(clientRef);
-      if(clientSnap.exists()) {
-        const data = clientSnap.data();
-        const currentRating = data.rating || 5; const count = data.reviewsCount || 0;
-        const newCount = count + 1; const newRating = ((currentRating * count) + rating) / newCount;
-        await updateDoc(clientRef, { rating: newRating, reviewsCount: newCount });
-      }
-      setReviewModal(null);
-      show('Avaliação enviada ao cliente!');
-      return;
-    }`
-);
+const ordersHeaderRegex = /<header className=\{\`flex justify-between items-center px-4 pt-4 pb-2 \$\{isDark\?'bg-\[#18181b\]':'bg-\[#f8f9fa\]'\}\`\}>([\s\S]*?)<\/header>/;
+const newHeader = `<header className={\`flex justify-center items-center px-4 pt-4 pb-2 relative \${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}\`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={\`absolute left-4 w-10 h-10 flex items-center justify-center \${isDark?'text-white':'text-black'}\`}>
+          <Icon name="menu" size={24} />
+        </button>
+        <Logo isDark={isDark} hideSubtitle={true} />
+      </header>`;
 
-// We need to add the Pro control to evaluate the client
-code = code.replace(
-  "{/* Client Controls */}",
-  `{user.role === 'professional' && a.status === 'completed' && !a.proReviewed && (
-                     <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Cliente</button>
-                   )}
-                   {/* Client Controls */}`
-);
-
-// And update the review modal component signature
-code = code.replace(
-  "function ReviewModal({ a, onClose, onSubmit, isDark }: any) {",
-  "function ReviewModal({ a, onClose, onSubmit, isDark, userRole }: any) {"
-);
-
-code = code.replace(
-  "Como foi o serviço de {a.professionalName}?",
-  "{userRole === 'professional' ? `Como foi o cliente ${a.clientName}?` : `Como foi o serviço de ${a.professionalName}?`}"
-);
-
-code = code.replace(
-  "Avaliar Serviço",
-  "{userRole === 'professional' ? 'Avaliar Cliente' : 'Avaliar Serviço'}"
-);
-
-code = code.replace(
-  "<ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} />",
-  "<ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} userRole={user.role} />"
-);
+code = code.replace(ordersHeaderRegex, newHeader);
 
 fs.writeFileSync('src/App.tsx', code);
-console.log("Patched orders and review modal");
+console.log('Patched OrdersScreen header');

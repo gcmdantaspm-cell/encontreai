@@ -1,4 +1,6 @@
-import { Category, Professional, Review, Coupon, ChatMessage } from './types';
+const fs = require('fs');
+
+const code = `import { Category, Professional, Review, Coupon, ChatMessage } from './types';
 
 export const CATEGORIES: Category[] = [
   { id: 'limpeza', name: 'Limpeza', icon: 'cleaning_services' },
@@ -78,3 +80,6 @@ export const MOCK_REVIEWS: Review[] = [
 
 export const MOCK_COUPONS: Coupon[] = [];
 export const MOCK_CHATS: ChatMessage[] = [];
+`;
+fs.writeFileSync('src/data.ts', code);
+console.log('Patched data.ts');

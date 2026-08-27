@@ -544,7 +544,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   const loc = useLocation();
   const navigate = useNavigate();
   const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(loc.state?.filter || 'all');
   const [bookingService, setBookingService] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'list'|'map'>('list');
   
@@ -553,6 +553,9 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   }, [pros]);
 
   let filtered = allServices.filter((s:any) => {
+    if (filter === 'favorites') {
+       if(!user?.favorites?.includes(s.pro.id)) return false;
+    }
     if (!q) return true;
     const term = q.toLowerCase();
     return s.title.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term) || s.pro.name.toLowerCase().includes(term) || s.pro.profession.toLowerCase().includes(term) || s.category?.toLowerCase() === term || s.categoryId?.toLowerCase() === term;
@@ -563,12 +566,11 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
 
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar flex-1 flex flex-col h-full">
-      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
-        </div>
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
         <Logo isDark={isDark} hideSubtitle={true} />
-        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
       <div className={`px-4 pt-2 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
@@ -578,6 +580,21 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
           <button className="px-5 py-2.5 rounded-full bg-[#f97316] text-black shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center">
             <Icon name="arrow_forward" size={20} />
           </button>
+        </div>
+      </div>
+      
+      
+      <div className="px-4 mb-4 mt-2">
+        <h2 className="font-bold text-lg mb-3">Categorias</h2>
+        <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+          {CATEGORIES.map(c => (
+            <button key={c.id} onClick={() => { setQ(c.name); window.scrollTo(0,0); }} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${isDark ? 'bg-[#27272a]' : 'bg-[#e0f2fe] text-[#0ea5e9]'}`}>
+                <Icon name={c.icon} className={isDark ? 'text-white' : 'text-[#0ea5e9]'} />
+              </div>
+              <span className="text-[10px] font-bold">{c.name}</span>
+            </button>
+          ))}
         </div>
       </div>
       
@@ -788,7 +805,14 @@ function DashboardProScreen({ user, isDark, go }: any) {
   const earned = apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + a.price, 0);
 
   return (
-    <div className="p-4 pb-24">
+    <div className="pb-24">
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
+        <Logo isDark={isDark} hideSubtitle={true} />
+      </header>
+      <div className="p-4">
        <h1 className="font-black text-2xl mb-2">Olá, {user.name.split(' ')[0]} 👋</h1>
        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda do dia.</p>
        <div className={`p-6 rounded-3xl mb-8 shadow-md border flex flex-col justify-center items-center text-center ${isDark?'bg-gradient-to-br from-[#27272a] to-[#18181b] border-[#3f3f46]':'bg-gradient-to-br from-[#002a5d] to-[#001a40] border-[#002a5d] text-white'}`}>
@@ -839,6 +863,7 @@ function DashboardProScreen({ user, isDark, go }: any) {
            </div>
          ))}
        </div>
+    </div>
     </div>
   )
 }
@@ -900,7 +925,14 @@ function MyServicesScreen({ user, isDark, show }: any) {
   const toggleArr = (arr: any[], setArr: any, val: any) => setArr(arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val].sort((a,b)=>a>b?1:-1));
 
   return (
-    <div className="p-4 pb-24">
+    <div className="pb-24">
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
+        <Logo isDark={isDark} hideSubtitle={true} />
+      </header>
+      <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="font-black text-2xl">Meus Serviços</h1>
         <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
@@ -1018,6 +1050,7 @@ function MyServicesScreen({ user, isDark, show }: any) {
         })}
       </div>
     </div>
+    </div>
   )
 }
 
@@ -1077,12 +1110,11 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
-      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
-        </div>
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
         <Logo isDark={isDark} hideSubtitle={true} />
-        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
       <div className="px-4 mt-4">
@@ -1485,7 +1517,14 @@ function ChatListScreen({ user, pros, isDark }: any) {
   const chatPartners = Array.from(new Set(msgs.map((m:any) => m.senderId === user?.id ? m.receiverId : m.senderId)));
 
   return (
-    <div className="p-4 pb-24">
+    <div className="pb-24">
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
+        <Logo isDark={isDark} hideSubtitle={true} />
+      </header>
+      <div className="p-4">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={()=>navigate(-1)}><Icon name="arrow_back" /></button>
         <h1 className="font-black text-2xl">Mensagens</h1>
@@ -1507,6 +1546,7 @@ function ChatListScreen({ user, pros, isDark }: any) {
           )
         })}
       </div>
+    </div>
     </div>
   );
 }
