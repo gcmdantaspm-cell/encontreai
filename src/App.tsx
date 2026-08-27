@@ -130,6 +130,36 @@ function useSearch() {
   return { pros };
 }
 
+
+function useCategoriesData() {
+  const [categories, setCategories] = useState<any[]>(CATEGORIES);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'categories'), (snap) => {
+       const dbCats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+       const merged = [...CATEGORIES];
+       for (const dbCat of dbCats) {
+         if (!merged.find(c => c.id === dbCat.id)) {
+           merged.push({ id: dbCat.id, name: dbCat.name, icon: dbCat.icon || 'category' });
+         }
+       }
+       setCategories(merged);
+    });
+    return unsub;
+  }, []);
+  
+  const addCategory = async (name: string) => {
+     if(!name || !name.trim()) return '';
+     const id = name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
+     const exists = categories.find(c => c.id === id);
+     if (!exists) {
+        await setDoc(doc(db, 'categories', id), { name: name.trim(), icon: 'category' });
+     }
+     return id;
+  }
+  
+  return { categories, addCategory };
+}
+
 function useServices(pid?: string) {
   const [services, setServices] = useState<ProfService[]>([]);
   const load = useCallback(async () => {
@@ -321,6 +351,7 @@ function AppContent() {
   const { pros } = useSearch();
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
+  const { categories, addCategory } = useCategoriesData();
   
   const [currentRole, setCurrentRole] = useState(user?.currentMode || user?.role || 'client');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -393,8 +424,8 @@ function AppContent() {
           <div className="flex-1 overflow-y-auto min-h-0">
             <Routes>
                <Route path="/" element={<Navigate to="/busca" />} />
-               <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
-               <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
+               <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
+               <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
                <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
                
                <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />
@@ -403,7 +434,10 @@ function AppContent() {
                
                <Route path="/servico/:id" element={<ServiceDetailScreen pros={pros} user={user} isDark={isDark} show={show} toggleFavorite={toggleFavorite} />} />
                
-               <Route path="/painel-profissional/*" element={<ProtectedRoute allowedRole="professional"><ProPanelScreen user={user} isDark={isDark} show={show} go={go} /></ProtectedRoute>} />
+               <Route path="/agenda" element={<Navigate to="/painel-profissional/dashboard" />} />
+               <Route path="/meus-servicos" element={<Navigate to="/painel-profissional/servicos" />} />
+               <Route path="/novo-servico" element={<Navigate to="/painel-profissional/novo-servico" />} />
+               <Route path="/painel-profissional/*" element={<ProtectedRoute allowedRole="professional"><ProPanelScreen user={user} isDark={isDark} show={show} go={go} categories={categories} addCategory={addCategory} /></ProtectedRoute>} />
                <Route path="/chat-list" element={<ChatListScreen user={user} pros={pros} go={go} isDark={isDark} />} />
                <Route path="/chat/:id" element={<ChatDetailScreen user={user} go={go} isDark={isDark} />} />
             </Routes>
@@ -571,7 +605,7 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
   )
 }
 
-function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
+function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: any) {
   const loc = useLocation();
   const navigate = useNavigate();
   const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
@@ -618,7 +652,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
       <div className="px-4 mb-4 mt-2">
         <h2 className="font-bold text-lg mb-3">Categorias</h2>
         <div className="grid grid-cols-4 gap-y-4 gap-x-2">
-          {CATEGORIES.map(c => (
+          {categories?.map(c => (
             <button key={c.id} onClick={() => { setQ(c.name); window.scrollTo(0,0); }} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
               <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${isDark ? 'bg-[#27272a]' : 'bg-[#e0f2fe] text-[#0ea5e9]'}`}>
                 <Icon name={c.icon} className={isDark ? 'text-white' : 'text-[#0ea5e9]'} />
@@ -835,7 +869,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
   )
 }
 
-function ProPanelScreen({ user, isDark, show }: any) {
+function ProPanelScreen({ user, isDark, show, categories, addCategory }: any) {
   const loc = useLocation();
   const navigate = useNavigate();
   
@@ -882,7 +916,7 @@ function ProPanelScreen({ user, isDark, show }: any) {
             <Route path="/" element={<Navigate to="/painel-profissional/dashboard" />} />
             <Route path="/dashboard" element={<ProDashboardView user={user} isDark={isDark} />} />
             <Route path="/servicos" element={<ProServicesView user={user} isDark={isDark} show={show} />} />
-            <Route path="/novo-servico" element={<ProNewServiceView user={user} isDark={isDark} show={show} />} />
+            <Route path="/novo-servico" element={<ProNewServiceView user={user} isDark={isDark} show={show} categories={categories} addCategory={addCategory} />} />
           </Routes>
         </div>
 
@@ -1030,13 +1064,14 @@ function ProServicesView({ user, isDark, show }: any) {
   );
 }
 
-function ProNewServiceView({ user, isDark, show }: any) {
+function ProNewServiceView({ user, isDark, show, categories, addCategory }: any) {
   const { add } = useServices(user?.id);
   const navigate = useNavigate();
 
   const [t, setT] = useState('');
   const [p, setP] = useState('');
   const [cat, setCat] = useState('');
+  const [catName, setCatName] = useState('');
   const [desc, setDesc] = useState('');
   const [imgs, setImgs] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -1060,7 +1095,15 @@ function ProNewServiceView({ user, isDark, show }: any) {
   const handleSave = async () => {
     const newErrs: any = {};
     if(!t.trim()) newErrs.t = 'Este campo é obrigatório.';
-    if(!cat) newErrs.cat = 'Este campo é obrigatório.';
+    
+    let finalCatId = cat;
+    if (catName && !cat) {
+      finalCatId = await addCategory(catName);
+    } else if (cat) {
+      finalCatId = cat;
+    }
+    if(!finalCatId) newErrs.cat = 'Este campo é obrigatório.';
+
     if(!p || isNaN(Number(p))) newErrs.p = 'Este campo é obrigatório.';
     if(!desc.trim()) newErrs.desc = 'Este campo é obrigatório.';
     if(imgs.length === 0) newErrs.imgs = 'Adicione pelo menos uma foto de capa.';
@@ -1077,7 +1120,7 @@ function ProNewServiceView({ user, isDark, show }: any) {
     const defaultPay = ['Pix','Cartão de Crédito'];
 
     await add({
-      title: t, price: Number(p), description: desc, categoryId: cat, 
+      title: t, price: Number(p), description: desc, categoryId: finalCatId, 
       imageUrls: imgs, availableDays: defaultDays, availableHours: defaultHours, paymentMethods: defaultPay
     });
     
@@ -1157,13 +1200,26 @@ function ProNewServiceView({ user, isDark, show }: any) {
               <div className="flex flex-col sm:flex-row gap-5">
                 <div className="flex-1">
                   <label className="text-sm font-bold mb-2 block">Categoria *</label>
+                  
                   <div className="relative">
-                    <select value={cat} onChange={e=>{setCat(e.target.value); setErrors({...errors, cat: null});}} className={`w-full p-4 rounded-xl border outline-none text-sm font-medium appearance-none focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-                      <option value="">Selecione...</option>
-                      {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <Icon name="expand_more" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                    <input 
+                      list="categories-list" 
+                      value={catName} 
+                      onChange={e=>{
+                         setCatName(e.target.value); 
+                         setErrors({...errors, cat: null});
+                         const match = categories?.find((c:any) => c.name.toLowerCase() === e.target.value.toLowerCase());
+                         if(match) setCat(match.id);
+                         else setCat('');
+                      }} 
+                      placeholder="Ex: Limpeza, Reformas, T.I..."
+                      className={`w-full p-4 rounded-xl border outline-none text-sm font-medium focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} 
+                    />
+                    <datalist id="categories-list">
+                      {categories?.map((c: any) => <option key={c.id} value={c.name} />)}
+                    </datalist>
                   </div>
+
                   {errors.cat && <p className="text-sm text-red-500 mt-2 font-bold">{errors.cat}</p>}
                 </div>
                 <div className="flex-1">

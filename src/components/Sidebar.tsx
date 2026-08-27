@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
@@ -6,9 +6,10 @@ function Icon({ name, className, size }: { name: string, className?: string, siz
   return <span className={`material-symbols-outlined ${className || ''}`} style={{ fontSize: size }}>{name}</span>;
 }
 
-export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
+export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isCatOpen, setIsCatOpen] = useState(false);
 
   return (
     <AnimatePresence>
@@ -61,9 +62,26 @@ export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
               <button onClick={() => { navigate('/busca', { state: { view: 'map' }}); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
                 <Icon name="location_on" /> Profissionais Perto de Mim
               </button>
-              <button onClick={() => { navigate('/busca'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="category" /> Categorias
-              </button>
+              
+              <div className="flex flex-col">
+                <button onClick={() => setIsCatOpen(!isCatOpen)} className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
+                  <div className="flex items-center gap-4"><Icon name="category" /> Categorias</div>
+                  <Icon name={isCatOpen ? 'expand_less' : 'expand_more'} size={20} />
+                </button>
+                <AnimatePresence>
+                  {isCatOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col pl-12 pr-4 pt-1 gap-2">
+                      <button onClick={() => { navigate('/busca'); close(); }} className={`text-left py-2 text-sm font-medium transition-colors ${isDark?'text-gray-400 hover:text-white':'text-gray-500 hover:text-black'}`}>Ver Todas</button>
+                      {categories?.map((c: any) => (
+                         <button key={c.id} onClick={() => { navigate('/busca', { state: { category: c.id }}); close(); setIsCatOpen(false); }} className={`text-left py-2 text-sm font-medium transition-colors flex items-center gap-2 ${isDark?'text-gray-400 hover:text-white':'text-gray-500 hover:text-black'}`}>
+                           <Icon name={c.icon || 'category'} size={16} /> {c.name}
+                         </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button onClick={() => { navigate('/busca', { state: { filter: 'favorites' }}); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
                 <Icon name="favorite_border" /> Favoritos
               </button>
@@ -73,7 +91,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
 
               <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
 
-              <button onClick={() => { navigate('/agenda'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
+              <button onClick={() => { navigate('/painel-profissional/dashboard'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
                 <Icon name="dashboard" /> Painel do Profissional
               </button>
               <button onClick={() => { navigate('/chat-list'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
