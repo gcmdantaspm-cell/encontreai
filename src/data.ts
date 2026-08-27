@@ -11,7 +11,7 @@ export const CATEGORIES: Category[] = [
   { id: 'barbearia', name: 'Barbearia', icon: 'content_cut' },
 ];
 
-export const PROFESSIONALS: Professional[] = [
+export const PROFESSIONALS: any[] = [
   {
     id: 'p1',
     name: 'Thiago Barbeiro',
@@ -216,7 +216,7 @@ export const MOCK_REVIEWS: Review[] = [
 ];
 
 export const MOCK_COUPONS: Coupon[] = [];
-export const MOCK_CHATS: ChatMessage[] = [,
+export const MOCK_CHATS: any[] = [,
 
   { id: 'r5', professionalId: 'p4', clientId: 'u105', clientName: 'Sônia G.', rating: 5, text: 'Muito caprichosa, minha casa ficou brilhando!', createdAt: '2026-08-25T14:30:00Z' },
   { id: 'r6', professionalId: 'p5', clientId: 'u106', clientName: 'Bruno M.', rating: 4, text: 'Rápido e objetivo, consertou o vazamento.', createdAt: '2026-08-24T10:00:00Z' },

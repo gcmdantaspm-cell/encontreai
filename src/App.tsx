@@ -274,7 +274,7 @@ export default function App() {
 function ProtectedRoute({ allowedRole, children }: any) {
   const { currentRole } = useContext(RoleContext);
   if (currentRole !== allowedRole && currentRole) {
-    return <Navigate to={currentRole === 'client' ? '/busca' : '/agenda'} />;
+    return <Navigate to={currentRole === 'client' ? '/busca' : '/painel-profissional/dashboard'} />;
   }
   return children;
 }
@@ -288,7 +288,7 @@ const clientTabs = [
 ];
 
 const proTabs = [
-  { id: '/agenda', icon: 'dashboard', label: 'Painel' },
+  { id: '/painel-profissional/dashboard', icon: 'dashboard', label: 'Painel' },
   { id: '/pedidos', icon: 'calendar_month', label: 'Agenda' },
   { id: '/chat-list', icon: 'chat', label: 'Chat' },
   { id: '/perfil', icon: 'person', label: 'Perfil' }
@@ -336,7 +336,7 @@ function AppContent() {
 
   // Legacy fallback for components that still expect `go` (we'll update most, but just in case)
   const go = (s: string, data?: any) => { 
-     const routeMap:any = { 'home':'/busca', 'search':'/busca', 'orders':'/pedidos', 'profile':'/perfil', 'dashboard':'/agenda', 'my-services':'/meus-servicos', 'chat-list':'/chat-list' };
+     const routeMap:any = { 'home':'/busca', 'search':'/busca', 'orders':'/pedidos', 'profile':'/perfil', 'dashboard':'/painel-profissional/dashboard', 'my-services':'/painel-profissional/servicos', 'chat-list':'/chat-list' };
      if (s === 'pro-detail') navigate(`/servico/${data}`);
      else if (s === 'chat-detail') navigate(`/chat/${data.id}`);
      else navigate(routeMap[s] || `/${s}`);
@@ -346,7 +346,8 @@ function AppContent() {
   if (authError) return <div className={`min-h-screen flex items-center justify-center font-bold text-red-500 bg-[#18181b]`}>{authError}</div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
   
-  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname);
+  const isProPanel = loc.pathname.startsWith('/painel-profissional');
+  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname) || isProPanel;
   
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
@@ -354,7 +355,7 @@ function AppContent() {
       <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
       <div className={`flex justify-center h-screen h-[100dvh] overflow-hidden ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
         <div className={`w-full max-w-7xl h-full relative flex overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
-          {!hideBottomNav && (
+          {!hideBottomNav && !isProPanel && (
              <div className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
                 <div className="p-6">
                    <Logo isDark={isDark} hideSubtitle={false} />
@@ -402,10 +403,7 @@ function AppContent() {
                
                <Route path="/servico/:id" element={<ServiceDetailScreen pros={pros} user={user} isDark={isDark} show={show} toggleFavorite={toggleFavorite} />} />
                
-               <Route path="/agenda" element={<ProtectedRoute allowedRole="professional"><DashboardProScreen user={user} isDark={isDark} go={go} /></ProtectedRoute>} />
-               <Route path="/meus-servicos" element={<ProtectedRoute allowedRole="professional"><MyServicesScreen user={user} isDark={isDark} show={show} /></ProtectedRoute>} />
-               <Route path="/novo-servico" element={<ProtectedRoute allowedRole="professional"><NewServiceScreen user={user} isDark={isDark} show={show} /></ProtectedRoute>} />
-               
+               <Route path="/painel-profissional/*" element={<ProtectedRoute allowedRole="professional"><ProPanelScreen user={user} isDark={isDark} show={show} go={go} /></ProtectedRoute>} />
                <Route path="/chat-list" element={<ChatListScreen user={user} pros={pros} go={go} isDark={isDark} />} />
                <Route path="/chat/:id" element={<ChatDetailScreen user={user} go={go} isDark={isDark} />} />
             </Routes>
@@ -837,123 +835,216 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
   )
 }
 
-function DashboardProScreen({ user, isDark, go }: any) {
+function ProPanelScreen({ user, isDark, show }: any) {
+  const loc = useLocation();
+  const navigate = useNavigate();
+  
+  const tabs = [
+    { id: '/painel-profissional/dashboard', icon: 'analytics', label: 'Ganhos e Pedidos' },
+    { id: '/painel-profissional/servicos', icon: 'list_alt', label: 'Meus Serviços' },
+    { id: '/painel-profissional/novo-servico', icon: 'add_circle', label: 'Adicionar Serviço' }
+  ];
+
+  const handleBackToClient = () => {
+    navigate('/busca');
+  };
+
+  return (
+    <div className="flex h-full w-full bg-white dark:bg-black">
+      {/* Desktop Sidebar for ProPanel */}
+      <div className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
+         <div className="p-6 pb-2">
+            <h2 className="font-black text-xl text-[#f97316] flex items-center gap-2"><Icon name="handyman" /> Painel PRO</h2>
+         </div>
+         <div className="flex flex-col gap-2 px-4 mt-4 flex-1">
+            {tabs.map(t => {
+              const active = loc.pathname.startsWith(t.id);
+              return (
+                <Link to={t.id} key={t.id} className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${active ? 'bg-[#f97316] text-white' : (isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200')}`}>
+                  <Icon name={t.icon} fill={active} size={24} />
+                  <span>{t.label}</span>
+                </Link>
+              )
+            })}
+         </div>
+         <div className="p-4 mb-4">
+            <button onClick={handleBackToClient} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors border ${isDark ? 'border-[#3f3f46] text-gray-300 hover:bg-[#27272a]' : 'border-gray-300 text-gray-700 hover:bg-gray-200'}`}>
+              <Icon name="arrow_back" size={20} />
+              <span className="text-sm">Voltar ao Modo Cliente</span>
+            </button>
+         </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col relative overflow-hidden min-w-0">
+        <div className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route path="/" element={<Navigate to="/painel-profissional/dashboard" />} />
+            <Route path="/dashboard" element={<ProDashboardView user={user} isDark={isDark} />} />
+            <Route path="/servicos" element={<ProServicesView user={user} isDark={isDark} show={show} />} />
+            <Route path="/novo-servico" element={<ProNewServiceView user={user} isDark={isDark} show={show} />} />
+          </Routes>
+        </div>
+
+        {/* Mobile Bottom Bar for ProPanel */}
+        <div className={`w-full shrink-0 border-t flex justify-around lg:hidden items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+           {tabs.map(t => {
+             const active = loc.pathname.startsWith(t.id);
+             return (
+             <Link to={t.id} key={t.id} className={`flex flex-col items-center justify-center w-20 h-full transition-colors ${active ? 'text-[#f97316]' : (isDark ? 'text-[#a1a1aa]' : 'text-gray-400')}`}>
+               <Icon name={t.icon} fill={active} size={24} />
+               <span className="text-[10px] font-bold mt-1 text-center leading-tight">{t.label}</span>
+             </Link>
+           )})}
+           <button onClick={handleBackToClient} className={`flex flex-col items-center justify-center w-20 h-full transition-colors ${isDark ? 'text-[#a1a1aa]' : 'text-gray-400'}`}>
+             <Icon name="logout" size={24} />
+             <span className="text-[10px] font-bold mt-1 text-center leading-tight">Sair</span>
+           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProDashboardView({ user, isDark }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
-  const pending = apts.filter(a => a.status === 'approved');
-  const earned = user.walletBalance || apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.price * 0.93), 0);
+  const navigate = useNavigate();
+  const pending = apts.filter((a:any) => a.status === 'approved');
+  const completed = apts.filter((a:any) => a.status === 'completed');
+  const earned = user.walletBalance || completed.reduce((sum:number, a:any) => sum + (a.price * 0.93), 0);
 
   return (
     <div className="pb-24 max-w-5xl mx-auto w-full">
-      <div className="p-4">
+      <div className="p-4 md:p-8">
        <h1 className="font-black text-2xl mb-2">Olá, {user.name.split(' ')[0]} 👋</h1>
-       <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda do dia.</p>
-       <div className={`p-6 rounded-3xl mb-8 shadow-md border flex flex-col justify-center items-center text-center ${isDark?'bg-gradient-to-br from-[#27272a] to-[#18181b] border-[#3f3f46]':'bg-gradient-to-br from-[#002a5d] to-[#001a40] border-[#002a5d] text-white'}`}>
-         <p className="text-sm font-medium mb-1 opacity-80">Ganhos Totais (Concluídos)</p>
-         <h2 className={`font-black text-4xl mb-4 ${isDark?'text-[#f97316]':'text-[#f97316]'}`}>R$ {earned.toFixed(2)}</h2>
-         <div className="w-full h-[1px] bg-white/10 mb-4" />
-         <div className="flex justify-between w-full px-4"><div><p className="text-xs opacity-70">Pendentes</p><p className="font-bold text-lg">{pending.length}</p></div><div><p className="text-xs opacity-70">Concluídos</p><p className="font-bold text-lg">{apts.filter(a=>a.status==='completed').length}</p></div></div>
-       </div>
+       <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda.</p>
        
-       <div className={`p-5 rounded-3xl mb-8 border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-         <div className="flex justify-between items-end mb-2">
-           <h3 className="font-black text-lg">Perfil Campeão</h3>
-           <span className="font-bold text-[#f97316]">70%</span>
-         </div>
-         <div className="w-full h-3 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 mb-4">
-           <div className="h-full bg-[#f97316] rounded-full" style={{width: '70%'}}></div>
-         </div>
-         <p className={`text-xs mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Complete seu perfil para atrair mais clientes e ganhar o selo de verificação.</p>
-         
-         <div className="flex flex-col gap-3">
-           <button onClick={()=>go('my-services')} className={`p-3 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-             <div>
-               <p className="font-bold text-sm mb-0.5">Adicionar mais fotos</p>
-               <p className={`text-[10px] ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Serviços com fotos vendem 3x mais.</p>
-             </div>
-             <Icon name="chevron_right" />
-           </button>
-           <button onClick={()=>go('profile')} className={`p-3 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-             <div>
-               <p className="font-bold text-sm mb-0.5">Verificar Identidade</p>
-               <p className={`text-[10px] ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ganhe um selo de segurança.</p>
-             </div>
-             <Icon name="chevron_right" />
-           </button>
+       <div className={`p-6 md:p-10 rounded-3xl mb-8 shadow-md border flex flex-col justify-center items-center text-center ${isDark?'bg-gradient-to-br from-[#27272a] to-[#18181b] border-[#3f3f46]':'bg-gradient-to-br from-[#002a5d] to-[#001a40] border-[#002a5d] text-white'}`}>
+         <p className="text-sm font-medium mb-1 opacity-80">Ganhos Totais (Concluídos)</p>
+         <h2 className={`font-black text-5xl mb-6 ${isDark?'text-[#f97316]':'text-[#f97316]'}`}>R$ {earned.toFixed(2)}</h2>
+         <div className="w-full h-[1px] bg-white/10 mb-6" />
+         <div className="flex justify-around w-full px-4">
+           <div><p className="text-xs md:text-sm opacity-70">Em Andamento</p><p className="font-bold text-xl md:text-2xl">{pending.length}</p></div>
+           <div className="w-[1px] h-full bg-white/20 mx-4"></div>
+           <div><p className="text-xs md:text-sm opacity-70">Concluídos</p><p className="font-bold text-xl md:text-2xl">{completed.length}</p></div>
          </div>
        </div>
-       <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Icon name="calendar_today" size={20}/> Agenda Pendente</h3>
-       <div className="flex flex-col gap-4">
-         {pending.length === 0 && <p className={`text-center py-6 text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Nenhum serviço agendado no momento.</p>}
-         {pending.map(a => (
-           <div key={a.id} className={`p-5 rounded-2xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-             <div className="flex justify-between items-start mb-3"><div><p className="font-bold text-lg">{a.clientName}</p><p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{a.serviceTitle}</p></div><span className="font-black text-[#f97316]">R$ {a.price.toFixed(2)}</span></div>
-             <p className={`text-sm font-medium flex items-center gap-1 mb-4 ${isDark?'text-[#e4e4e7]':'text-gray-700'}`}><Icon name="schedule" size={16}/> {a.date} às {a.time}</p>
-             <div className="flex gap-2">
-               <button onClick={()=>go('chat-detail', {id: a.clientId, name: a.clientName})} className={`flex-1 py-3 rounded-xl border font-bold text-sm flex items-center justify-center gap-1 ${isDark?'border-[#3f3f46]':'border-[#e5e7eb]'}`}><Icon name="chat" size={16}/> Chat</button>
+
+       <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Icon name="calendar_today" size={24}/> Pedidos em Andamento</h3>
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+         {pending.length === 0 && <p className={`col-span-full text-center py-10 font-medium opacity-50 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Nenhum serviço agendado no momento.</p>}
+         {pending.map((a:any) => (
+           <div key={a.id} className={`p-6 rounded-3xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+             <div className="flex justify-between items-start mb-4">
+               <div>
+                 <p className="font-bold text-lg">{a.clientName}</p>
+                 <p className={`text-sm ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{a.serviceTitle}</p>
+               </div>
+               <span className="font-black text-xl text-[#f97316]">R$ {a.price.toFixed(2)}</span>
+             </div>
+             <p className={`text-sm font-medium flex items-center gap-2 mb-6 ${isDark?'text-[#e4e4e7]':'text-gray-700'}`}>
+               <span className="p-1.5 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-500/20"><Icon name="schedule" size={16}/></span> 
+               {a.date} às {a.time}
+             </p>
+             <div className="flex gap-3">
+               <button onClick={()=>navigate(`/chat/${a.clientId}`)} className={`flex-1 py-3 rounded-xl border font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-[#3f3f46] transition-colors ${isDark?'border-[#3f3f46]':'border-[#e5e7eb]'}`}><Icon name="chat" size={18}/> Chat</button>
                
                  <button onClick={() => {
-                   const codeStr = prompt('Digite o código de 4 dígitos do cliente:');
+                   const codeStr = prompt('Digite o código de 4 dígitos do cliente para confirmar a conclusão:');
                    if(!codeStr) return;
                    const confirmCode = (a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase();
                    if (codeStr.toUpperCase() === confirmCode) {
-   updateStatus(a.id, 'completed');
-   
-   // Credit the professional's wallet (93% of the value)
-   const proRef = doc(db, 'users', user.id);
-   getDoc(proRef).then(snap => {
-     if(snap.exists()) {
-        const data = snap.data();
-        const currentBalance = data.walletBalance || 0;
-        const newBalance = currentBalance + (a.price * 0.93);
-        updateDoc(proRef, { walletBalance: newBalance });
-     }
-   });
-
-   alert('Código confirmado! O status foi alterado para Pagamento recebido e o valor foi para sua carteira digital.');
-} else {
-                     alert('Código inválido. Tente novamente.');
+                     updateStatus(a.id, 'completed');
+                     const proRef = doc(db, 'users', user.id);
+                     getDoc(proRef).then(snap => {
+                       if(snap.exists()) {
+                          const data = snap.data();
+                          const currentBalance = data.walletBalance || 0;
+                          const newBalance = currentBalance + (a.price * 0.93);
+                          updateDoc(proRef, { walletBalance: newBalance });
+                       }
+                     });
+                     alert('Código validado com sucesso! O valor foi transferido para sua carteira digital.');
+                   } else {
+                     alert('Código inválido. Verifique com o cliente e tente novamente.');
                    }
-                 }} className="flex-1 py-3 rounded-xl bg-[#4ade80] text-[#14532d] font-bold text-sm flex items-center justify-center gap-1"><Icon name="check_circle" size={16}/> Validar Código</button>
-
+                 }} className="flex-1 py-3 rounded-xl bg-[#4ade80] hover:bg-[#22c55e] text-[#14532d] font-bold text-sm flex items-center justify-center gap-2 transition-colors"><Icon name="check_circle" size={18}/> Concluir</button>
              </div>
            </div>
          ))}
        </div>
-    </div>
+      </div>
     </div>
   )
 }
 
-function NewServiceScreen({ user, isDark, show }: any) {
+function ProServicesView({ user, isDark, show }: any) {
+  const { services, remove } = useServices(user?.id);
   const navigate = useNavigate();
-  useEffect(() => {
-    navigate('/meus-servicos');
-  }, [navigate]);
-  return null;
+
+  return (
+    <div className="pb-24 max-w-5xl mx-auto w-full">
+      <div className="p-4 md:p-8">
+        <h1 className="font-black text-2xl mb-6">Meus Serviços</h1>
+        
+        {services.length === 0 ? (
+           <div className={`text-center py-16 px-6 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center ${isDark?'border-[#3f3f46]':'border-[#d1d5db]'}`}>
+             <Icon name="post_add" size={64} className="mb-4 opacity-30 text-[#f97316]" />
+             <h3 className="font-bold text-xl mb-2">Nenhum serviço postado</h3>
+             <p className={`text-sm mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem anúncios cadastrados. Adicione seu primeiro serviço para começar a receber pedidos!</p>
+             <button onClick={() => navigate('/painel-profissional/novo-servico')} className="px-8 py-4 bg-[#f97316] text-black font-black rounded-xl active:scale-95 transition-transform shadow-lg hover:shadow-xl">Postar meu primeiro serviço</button>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {services.map((s:any) => {
+              const catObj = CATEGORIES.find((c:any) => c.id === s.categoryId);
+              return (
+                <div key={s.id} className={`p-4 rounded-3xl border flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                  {s.imageUrls?.length > 0 ? (
+                    <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x mb-1">
+                      {s.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-40 shrink-0 snap-center object-cover rounded-xl" />)}
+                    </div>
+                  ) : (s.imageUrl ? <img src={s.imageUrl} className="w-full h-40 object-cover rounded-xl mb-1" /> : <div className="w-full h-40 bg-gray-200 dark:bg-gray-800 rounded-xl mb-1 flex items-center justify-center"><Icon name="image" className="opacity-20" size={48}/></div>)}
+                  
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        {catObj && <span className={`text-[10px] font-bold px-2 py-1 rounded bg-[#002a5d] text-white uppercase`}>{catObj.name}</span>}
+                      </div>
+                      <h3 className="font-bold text-lg leading-tight mb-1">{s.title}</h3>
+                      <p className="font-black text-[#f97316] text-lg">R$ {s.price?.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-2 pt-3 border-t border-gray-200 dark:border-[#3f3f46]">
+                    <button onClick={() => show('Edição estará disponível em breve.')} className="flex-1 py-2.5 font-bold text-sm bg-gray-100 hover:bg-gray-200 dark:bg-[#3f3f46] dark:hover:bg-[#52525b] rounded-lg active:scale-95 transition-colors">Editar</button>
+                    <button onClick={() => { if(window.confirm('Tem certeza que deseja excluir este serviço? Essa ação não pode ser desfeita.')) remove(s.id); }} className="flex-1 py-2.5 font-bold text-sm bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-500 dark:hover:bg-red-900/40 rounded-lg active:scale-95 transition-colors">Excluir</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function MyServicesScreen({ user, isDark, show }: any) {
-  const { services, add, remove } = useServices(user?.id);
-  const [adding, setAdding] = useState(false);
-  
-  const [t, setT] = useState(''); 
+function ProNewServiceView({ user, isDark, show }: any) {
+  const { add } = useServices(user?.id);
+  const navigate = useNavigate();
+
+  const [t, setT] = useState('');
   const [p, setP] = useState('');
-  const [desc, setDesc] = useState('');
   const [cat, setCat] = useState('');
-  const [dur, setDur] = useState('');
+  const [desc, setDesc] = useState('');
   const [imgs, setImgs] = useState<string[]>([]);
-  const [pay, setPay] = useState<string[]>([]);
-  const [days, setDays] = useState<number[]>([]);
-  const [hours, setHours] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  
-  const PAY_OPTIONS = ['Pix', 'Cartão de Crédito', 'Cartão de Débito', 'Dinheiro'];
-  const DAY_OPTIONS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const HOUR_OPTIONS = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
-  
-  const resetForm = () => { setT(''); setP(''); setDesc(''); setCat(''); setDur(''); setImgs([]); setPay([]); setDays([]); setHours([]); };
+  const [errors, setErrors] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFiles = async (e: any) => {
+    if(!e.target.files?.length) return;
     const files = Array.from(e.target.files) as File[];
     if(imgs.length + files.length > 3) { show('Máximo de 3 fotos permitidas!'); return; }
     setUploading(true);
@@ -966,144 +1057,145 @@ function MyServicesScreen({ user, isDark, show }: any) {
     setUploading(false);
   };
 
-  const handleSave = () => {
-    if(t && p && cat && days.length > 0 && hours.length > 0) { 
-      add({
-        title: t, price: Number(p), description: desc, categoryId: cat, duration: dur,
-        imageUrls: imgs, paymentMethods: pay, availableDays: days, availableHours: hours
-      }); 
-      resetForm(); setAdding(false); show('Serviço adicionado!'); 
-    } else {
-      show('Preencha os campos obrigatórios (incluindo Dias e Horários)!');
+  const handleSave = async () => {
+    const newErrs: any = {};
+    if(!t.trim()) newErrs.t = 'Este campo é obrigatório.';
+    if(!cat) newErrs.cat = 'Este campo é obrigatório.';
+    if(!p || isNaN(Number(p))) newErrs.p = 'Este campo é obrigatório.';
+    if(!desc.trim()) newErrs.desc = 'Este campo é obrigatório.';
+    if(imgs.length === 0) newErrs.imgs = 'Adicione pelo menos uma foto de capa.';
+    
+    if(Object.keys(newErrs).length > 0) {
+      setErrors(newErrs);
+      return;
     }
+    setErrors({});
+    setIsSubmitting(true);
+    
+    const defaultDays = [1,2,3,4,5];
+    const defaultHours = ['09:00','10:00','14:00','15:00'];
+    const defaultPay = ['Pix','Cartão de Crédito'];
+
+    await add({
+      title: t, price: Number(p), description: desc, categoryId: cat, 
+      imageUrls: imgs, availableDays: defaultDays, availableHours: defaultHours, paymentMethods: defaultPay
+    });
+    
+    setIsSubmitting(false);
+    show('Serviço publicado com sucesso!');
+    navigate('/painel-profissional/servicos');
   };
 
-  const toggleArr = (arr: any[], setArr: any, val: any) => setArr(arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val].sort((a,b)=>a>b?1:-1));
-
   return (
-    <div className="pb-24 max-w-5xl mx-auto w-full">
-      <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-black text-2xl">Meus Serviços</h1>
-        <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-11 h-11 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
-      </div>
-      <AnimatePresence>
-        {adding && (
-          <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="overflow-hidden mb-6">
-            <div className={`p-5 rounded-3xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-              <h3 className="font-black text-lg mb-4">Adicionar Novo Serviço</h3>
-              
-              <label className="text-xs font-bold mb-1 block opacity-70">Fotos do Serviço (Até 3)</label>
-              <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-                {imgs.map((src, i) => (
-                  <div key={i} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border">
-                    <img src={src} className="w-full h-full object-cover" />
-                    <button onClick={()=>setImgs(imgs.filter((_,j)=>j!==i))} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"><Icon name="close" size={14}/></button>
-                  </div>
-                ))}
-                {imgs.length < 3 && (
-                  <label className={`shrink-0 w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer ${isDark?'border-[#3f3f46] bg-[#18181b]':'border-[#d1d5db] bg-[#f8f9fa]'}`}>
-                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleFiles} disabled={uploading}/>
-                    {uploading ? <div className="w-5 h-5 border-2 border-[#f97316] border-t-transparent rounded-full animate-spin"/> : <Icon name="add_photo_alternate" className="opacity-50" />}
-                  </label>
-                )}
-              </div>
+    <div className="pb-24 max-w-6xl mx-auto w-full">
+      <div className="p-4 md:p-8">
+        <h1 className="font-black text-2xl md:text-3xl mb-2">Publicar Novo Serviço</h1>
+        <p className={`text-sm mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Preencha os dados abaixo para anunciar seu serviço na plataforma.</p>
 
-              <label className="text-xs font-bold mb-1 block opacity-70">Título do Serviço *</label>
-              <input value={t} onChange={e=>setT(e.target.value)} placeholder="Ex: Manutenção de Ar Condicionado" className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-              
-              <div className="flex gap-3 mb-4">
-                <div className="flex-1">
-                  <label className="text-xs font-bold mb-1 block opacity-70">Categoria *</label>
-                  <select value={cat} onChange={e=>setCat(e.target.value)} className={`w-full p-3.5 rounded-xl border outline-none text-sm font-medium appearance-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-                    <option value="">Selecione...</option>
-                    {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs font-bold mb-1 block opacity-70">Preço (R$) *</label>
-                  <input type="number" value={p} onChange={e=>setP(e.target.value)} placeholder="150" className={`w-full p-3.5 rounded-xl border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-                </div>
+        <div className={`p-5 md:p-8 rounded-3xl border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+            {/* Esquerda: Upload de Imagem */}
+            <div className="lg:col-span-5 flex flex-col">
+              <label className="text-sm font-bold mb-3 block">Foto de Capa (Até 3) *</label>
+              <div className={`flex-1 min-h-[250px] w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-4 text-center transition-colors shadow-sm ${isDark?'border-[#3f3f46] bg-[#18181b] hover:bg-[#27272a]':'border-[#d1d5db] bg-[#f8f9fa] hover:bg-gray-50'}`}>
+                 {imgs.length > 0 ? (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 shadow-md">
+                        <img src={imgs[0]} className="w-full h-full object-cover" />
+                        <button onClick={()=>setImgs(imgs.filter((_,j)=>j!==0))} className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white rounded-full p-2 hover:bg-black/80 transition-colors"><Icon name="delete" size={16}/></button>
+                      </div>
+                      {imgs.length > 1 && (
+                        <div className="flex gap-2 w-full overflow-x-auto hide-scrollbar">
+                          {imgs.slice(1).map((src, i) => (
+                            <div key={i+1} className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden shadow-sm">
+                              <img src={src} className="w-full h-full object-cover" />
+                              <button onClick={()=>setImgs(imgs.filter((_,j)=>j!==i+1))} className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white rounded-full p-1"><Icon name="close" size={12}/></button>
+                            </div>
+                          ))}
+                          {imgs.length < 3 && (
+                            <label className="w-20 h-20 shrink-0 rounded-lg border-2 border-dashed border-gray-300 dark:border-[#3f3f46] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors">
+                              <input type="file" multiple accept="image/*" className="hidden" onChange={handleFiles} disabled={uploading}/>
+                              <Icon name="add" size={24} className="opacity-50" />
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      {imgs.length === 1 && (
+                        <label className="px-6 py-2 rounded-full border border-gray-300 dark:border-[#3f3f46] text-sm font-bold cursor-pointer hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors mt-auto">
+                           <input type="file" multiple accept="image/*" className="hidden" onChange={handleFiles} disabled={uploading}/>
+                           Adicionar mais fotos
+                        </label>
+                      )}
+                    </div>
+                 ) : (
+                   <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                     <input type="file" multiple accept="image/*" className="hidden" onChange={handleFiles} disabled={uploading}/>
+                     {uploading ? <div className="w-8 h-8 border-4 border-[#f97316] border-t-transparent rounded-full animate-spin"/> : (
+                       <>
+                         <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 text-[#f97316] flex items-center justify-center mb-4">
+                            <Icon name="add_photo_alternate" size={32} />
+                         </div>
+                         <span className="font-bold text-base md:text-lg mb-1">Arraste ou clique aqui</span>
+                         <span className="text-xs opacity-60">PNG, JPG até 5MB</span>
+                       </>
+                     )}
+                   </label>
+                 )}
               </div>
-              
-              <label className="text-xs font-bold mb-1 block opacity-70">Duração Estimada (Opcional)</label>
-              <input value={dur} onChange={e=>setDur(e.target.value)} placeholder="Ex: 2 horas, 1 dia..." className={`w-full p-3.5 rounded-xl mb-4 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-
-              <label className="text-xs font-bold mb-1 block opacity-70">Formas de Pagamento</label>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {PAY_OPTIONS.map(po => (
-                  <button key={po} onClick={()=>toggleArr(pay, setPay, po)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${pay.includes(po) ? (isDark?'bg-[#f97316] text-black border-[#f97316]':'bg-[#f97316] text-white border-[#f97316]') : (isDark?'bg-[#18181b] border-[#3f3f46] text-[#a1a1aa]':'bg-[#f8f9fa] border-[#e5e7eb] text-gray-500')}`}>{po}</button>
-                ))}
-              </div>
-
-              <div className={`p-4 rounded-xl border mb-4 ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
-                <label className="text-xs font-bold mb-2 block opacity-70 flex items-center gap-1"><Icon name="event_available" size={14}/> Disponibilidade *</label>
-                <p className="text-[10px] mb-2 opacity-60">Dias de trabalho:</p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {DAY_OPTIONS.map((d,i) => (
-                    <button key={d} onClick={()=>toggleArr(days, setDays, i)} className={`w-9 h-9 rounded-full text-xs font-bold border transition-colors ${days.includes(i) ? 'bg-[#3730a3] text-white border-[#3730a3]' : (isDark?'border-[#3f3f46] text-[#a1a1aa]':'border-[#d1d5db] text-gray-500')}`}>{d}</button>
-                  ))}
-                </div>
-                <p className="text-[10px] mb-2 opacity-60">Horários de atendimento:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {HOUR_OPTIONS.map(h => (
-                    <button key={h} onClick={()=>toggleArr(hours, setHours, h)} className={`px-2 py-1 rounded text-xs font-bold border transition-colors ${hours.includes(h) ? 'bg-[#3730a3] text-white border-[#3730a3]' : (isDark?'border-[#3f3f46] text-[#a1a1aa]':'border-[#d1d5db] text-gray-500')}`}>{h}</button>
-                  ))}
-                </div>
-              </div>
-
-              <label className="text-xs font-bold mb-1 block opacity-70">Descrição Detalhada (Opcional)</label>
-              <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Descreva o que está incluso no serviço..." rows={3} className={`w-full p-3.5 rounded-xl mb-6 border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-              
-              <button disabled={!t || !p || !cat} onClick={handleSave} className="w-full py-4 rounded-2xl font-black bg-[#f97316] text-black disabled:opacity-50 active:scale-95 transition-transform">Salvar Serviço</button>
+              {errors.imgs && <p className="text-sm text-red-500 mt-2 font-bold">{errors.imgs}</p>}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      <div className="flex flex-col gap-4">
-        {services.length === 0 && !adding && (
-           <div className={`text-center py-10 px-6 rounded-3xl border-2 border-dashed ${isDark?'border-[#3f3f46]':'border-[#d1d5db]'}`}>
-             <Icon name="post_add" size={48} className="mx-auto mb-3 opacity-30" />
-             <p className={`text-sm font-medium ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Você ainda não tem serviços cadastrados. <br/>Clique no '+' para criar o seu primeiro anúncio.</p>
-           </div>
-        )}
-        {services.map((s:any) => {
-          const catObj = CATEGORIES.find((c:any) => c.id === s.categoryId);
-          return (
-            <div key={s.id} className={`p-5 rounded-3xl border flex flex-col gap-3 shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-              {s.imageUrls?.length > 0 ? (
-                <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x mb-2">
-                  {s.imageUrls.map((img:string, i:number) => <img key={i} src={img} className="w-full h-40 shrink-0 snap-center object-cover rounded-xl" />)}
-                </div>
-              ) : (s.imageUrl && <img src={s.imageUrl} className="w-full h-40 object-cover rounded-xl mb-2" />)}
-              
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    {catObj && <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase ${isDark?'bg-[#3f3f46] text-[#a1a1aa]':'bg-gray-100 text-gray-500'}`}>{catObj.name}</span>}
-                    {s.duration && <span className={`text-[10px] font-bold flex items-center gap-1 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`}><Icon name="schedule" size={12}/> {s.duration}</span>}
-                  </div>
-                  <p className="font-bold text-lg leading-tight mb-1">{s.title}</p>
-                  <p className={`text-xl font-black ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>R$ {s.price.toFixed(2)}</p>
-                </div>
-                <button onClick={()=>remove(s.id)} className="p-2.5 text-red-500 bg-red-50 dark:bg-red-500/10 rounded-full active:scale-95 transition-transform"><Icon name="delete" size={20} /></button>
+
+            {/* Direita: Formulário */}
+            <div className="lg:col-span-7 flex flex-col gap-5">
+              <div>
+                <label className="text-sm font-bold mb-2 block">Nome do Serviço *</label>
+                <input value={t} onChange={e=>{setT(e.target.value); setErrors({...errors, t: null});}} placeholder="Ex: Limpeza Pós-Obra, Corte Degradê" className={`w-full p-4 rounded-xl border outline-none text-sm font-medium focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                {errors.t && <p className="text-sm text-red-500 mt-2 font-bold">{errors.t}</p>}
               </div>
-              {s.paymentMethods?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {s.paymentMethods.map((pm:string)=><span key={pm} className={`text-[9px] font-bold px-2 py-0.5 rounded border ${isDark?'border-[#3f3f46] text-[#a1a1aa]':'border-gray-200 text-gray-500'}`}>{pm}</span>)}
+
+              <div className="flex flex-col sm:flex-row gap-5">
+                <div className="flex-1">
+                  <label className="text-sm font-bold mb-2 block">Categoria *</label>
+                  <div className="relative">
+                    <select value={cat} onChange={e=>{setCat(e.target.value); setErrors({...errors, cat: null});}} className={`w-full p-4 rounded-xl border outline-none text-sm font-medium appearance-none focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
+                      <option value="">Selecione...</option>
+                      {CATEGORIES.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <Icon name="expand_more" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                  </div>
+                  {errors.cat && <p className="text-sm text-red-500 mt-2 font-bold">{errors.cat}</p>}
                 </div>
-              )}
-              {s.description && <p className={`text-sm mt-1 line-clamp-3 leading-relaxed ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>{s.description}</p>}
+                <div className="flex-1">
+                  <label className="text-sm font-bold mb-2 block">Preço (R$) *</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold opacity-50 text-sm">R$</span>
+                    <input type="number" step="0.01" value={p} onChange={e=>{setP(e.target.value); setErrors({...errors, p: null});}} placeholder="0,00" className={`w-full p-4 pl-12 rounded-xl border outline-none text-sm font-medium focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                  </div>
+                  {errors.p && <p className="text-sm text-red-500 mt-2 font-bold">{errors.p}</p>}
+                </div>
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                <label className="text-sm font-bold mb-2 block">Descrição *</label>
+                <textarea value={desc} onChange={e=>{setDesc(e.target.value); setErrors({...errors, desc: null});}} placeholder="Detalhe o que está incluso no seu serviço..." className={`w-full flex-1 min-h-[120px] p-4 rounded-xl border outline-none text-sm font-medium focus:ring-2 focus:ring-[#f97316]/50 focus:border-[#f97316] transition-all resize-none ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+                {errors.desc && <p className="text-sm text-red-500 mt-2 font-bold">{errors.desc}</p>}
+              </div>
+
+              <div className="flex gap-4 mt-2 pt-4 border-t dark:border-[#3f3f46]">
+                <button onClick={() => navigate('/painel-profissional/servicos')} className={`flex-1 py-4 font-bold rounded-xl border transition-colors ${isDark?'border-[#3f3f46] text-white hover:bg-[#3f3f46]':'border-gray-300 text-gray-700 hover:bg-gray-100'}`}>Cancelar</button>
+                <button onClick={handleSave} disabled={isSubmitting} className="flex-[2] py-4 font-black rounded-xl bg-[#f97316] text-black disabled:opacity-70 hover:bg-[#ea580c] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"/> : 'Publicar Serviço'}
+                </button>
+              </div>
             </div>
-          );
-        })}
+          </div>
+
+        </div>
       </div>
     </div>
-    </div>
-  )
+  );
 }
-
 function OrdersScreen({ user, pros, go, isDark, show }: any) {
   const { apts, updateStatus, remove } = useAppointments(user?.id, user?.role);
   const [filter, setFilter] = useState('all');

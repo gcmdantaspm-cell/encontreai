@@ -2,8 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
-function Icon({ name, className }: { name: string, className?: string }) {
-  return <span className={`material-symbols-outlined ${className || ''}`}>{name}</span>;
+function Icon({ name, className, size }: { name: string, className?: string, size?: number }) {
+  return <span className={`material-symbols-outlined ${className || ''}`} style={{ fontSize: size }}>{name}</span>;
 }
 
 export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
