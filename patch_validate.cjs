@@ -1,9 +1,9 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/App.tsx', 'utf8');
 
-const regex = /if \(codeStr\.toUpperCase\(\) === confirmCode\) \{\s*updateStatus\(a\.id, 'completed'\);\s*alert\('Código confirmado! O valor foi liberado e creditado na sua conta\.'\);\s*\}/;
+const regexValidate = /if \(el\?\.value\.toUpperCase\(\) === confirmCode\) \{\s*updateStatus\(a\.id, 'completed'\);\s*if\(show\) show\('Código confirmado! 93% do valor foi creditado\.'\);\s*\}/;
 
-const replacement = `if (codeStr.toUpperCase() === confirmCode) {
+const replacementValidate = `if (el?.value.toUpperCase() === confirmCode) {
    updateStatus(a.id, 'completed');
    
    // Credit the professional's wallet (93% of the value)
@@ -17,10 +17,10 @@ const replacement = `if (codeStr.toUpperCase() === confirmCode) {
      }
    });
 
-   alert('Código confirmado! O status foi alterado para Pagamento recebido e o valor foi para sua carteira digital.');
+   if(show) show('Código confirmado! O status foi alterado para Pagamento recebido e o valor foi para sua carteira.');
 }`;
 
-code = code.replace(regex, replacement);
+code = code.replace(regexValidate, replacementValidate);
 
 fs.writeFileSync('src/App.tsx', code);
-console.log('Fixed dashboard pro');
+console.log('Fixed validate code');

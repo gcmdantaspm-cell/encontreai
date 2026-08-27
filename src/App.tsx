@@ -811,7 +811,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
 function DashboardProScreen({ user, isDark, go }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const pending = apts.filter(a => a.status === 'approved');
-  const earned = apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.price * 0.93), 0);
+  const earned = user.walletBalance || apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.price * 0.93), 0);
 
   return (
     <div className="pb-24">
@@ -868,9 +868,21 @@ function DashboardProScreen({ user, isDark, go }: any) {
                    if(!codeStr) return;
                    const confirmCode = (a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase();
                    if (codeStr.toUpperCase() === confirmCode) {
-                     updateStatus(a.id, 'completed');
-                     alert('Código confirmado! O valor foi liberado e creditado na sua conta.');
-                   } else {
+   updateStatus(a.id, 'completed');
+   
+   // Credit the professional's wallet (93% of the value)
+   const proRef = doc(db, 'users', user.id);
+   getDoc(proRef).then(snap => {
+     if(snap.exists()) {
+        const data = snap.data();
+        const currentBalance = data.walletBalance || 0;
+        const newBalance = currentBalance + (a.price * 0.93);
+        updateDoc(proRef, { walletBalance: newBalance });
+     }
+   });
+
+   alert('Código confirmado! O status foi alterado para Pagamento recebido e o valor foi para sua carteira digital.');
+} else {
                      alert('Código inválido. Tente novamente.');
                    }
                  }} className="flex-1 py-3 rounded-xl bg-[#4ade80] text-[#14532d] font-bold text-sm flex items-center justify-center gap-1"><Icon name="check_circle" size={16}/> Validar Código</button>
@@ -1139,7 +1151,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
                  pending: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
                  approved: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
-                 completed: { label: 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
+                 completed: { label: user.role === 'professional' ? 'Pagamento recebido' : 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
                  cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#fee2e2' : '#fee2e2', badgeText: '#991b1b' }
                };
                const cfg = stCfg[a.status] || stCfg.pending;
@@ -1186,9 +1198,21 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                            const el = document.getElementById(`code-${a.id}`) as HTMLInputElement;
                            const confirmCode = (a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase();
                            if (el?.value.toUpperCase() === confirmCode) {
-                              updateStatus(a.id, 'completed');
-                              if(show) show('Código confirmado! 93% do valor foi creditado.');
-                           } else {
+   updateStatus(a.id, 'completed');
+   
+   // Credit the professional's wallet (93% of the value)
+   const proRef = doc(db, 'users', user.id);
+   getDoc(proRef).then(snap => {
+     if(snap.exists()) {
+        const data = snap.data();
+        const currentBalance = data.walletBalance || 0;
+        const newBalance = currentBalance + (a.price * 0.93);
+        updateDoc(proRef, { walletBalance: newBalance });
+     }
+   });
+
+   if(show) show('Código confirmado! O status foi alterado para Pagamento recebido e o valor foi para sua carteira.');
+} else {
                               if(show) show('Código inválido. Tente novamente.');
                            }
                          }} className="px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Validar</button>
@@ -1742,18 +1766,21 @@ function ChatDetailScreen({ user, isDark }: any) {
                    </div>
                  )}
                  {p.status === 'accepted' && (
-                   <div className="flex flex-col gap-2">
-                     <span className="text-xs font-bold text-green-500 flex items-center gap-1"><Icon name="check_circle" size={14}/> Acordo Fechado</span>
-                     {(!isMine || user?.role === 'client') && (
-                       <button onClick={()=>setCheckoutProposal(m)} className="w-full mt-2 py-2 bg-green-500 text-white font-black rounded-lg text-sm shadow-md active:scale-95 transition-transform">Pagar Agora</button>
-                     )}
-                   </div>
-                 )}
+  <div className="flex flex-col gap-2">
+    <span className="text-xs font-bold text-green-500 flex items-center gap-1"><Icon name="check_circle" size={14}/> Acordo Fechado</span>
+    {user?.role === 'client' ? (
+      <button onClick={()=>setCheckoutProposal(m)} className="w-full mt-2 py-2 bg-green-500 text-white font-black rounded-lg text-sm shadow-md active:scale-95 transition-transform">Pagar Agora</button>
+    ) : (
+      <span className="text-xs font-bold text-orange-500 flex items-center gap-1"><Icon name="hourglass_empty" size={14}/> Pagamento pendente</span>
+    )}
+  </div>
+)}
+
                  {p.status === 'paid' && (
-                   <div className="flex flex-col gap-2 mt-2">
-                     <span className="text-xs font-bold text-blue-500 flex items-center gap-1"><Icon name="verified_user" size={14}/> Pago (Valor Retido)</span>
-                   </div>
-                 )}
+  <div className="flex flex-col gap-2 mt-2">
+    <span className="text-xs font-bold text-blue-500 flex items-center gap-1"><Icon name="verified_user" size={14}/> Pagamento feito (Valor retido)</span>
+  </div>
+)}
                  {p.status === 'rejected' && <span className="text-xs font-bold text-red-500">Proposta Recusada</span>}
                  {p.status === 'countered' && <span className="text-xs font-bold text-gray-500">Contraproposta enviada</span>}
                </div>
@@ -1927,6 +1954,13 @@ function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, 
           {user.verified && <Icon name="verified_user" size={18} className="text-green-500" fill />}
         </h1>
         <p className={`text-sm font-medium mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{user.email}</p>
+        <div className={`p-5 rounded-3xl border mb-6 flex justify-between items-center shadow-sm ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
+          <div>
+             <h3 className="font-black text-lg mb-1">Carteira Digital</h3>
+             <p className={`text-xs ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Saldo disponível</p>
+          </div>
+          <span className="font-black text-2xl text-[#f97316]">R$ {(user.walletBalance || 0).toFixed(2)}</span>
+        </div>
 
         {true && (
           <div className={`p-5 rounded-3xl border mb-6 ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
