@@ -279,23 +279,26 @@ function ProtectedRoute({ allowedRole, children }: any) {
   return children;
 }
 
+
+const clientTabs = [
+  { id: '/busca', icon: 'home', label: 'Home' },
+  { id: '/pesquisa', icon: 'search', label: 'Buscar' },
+  { id: '/pedidos', icon: 'assignment', label: 'Pedidos' },
+  { id: '/perfil', icon: 'person', label: 'Perfil' }
+];
+
+const proTabs = [
+  { id: '/agenda', icon: 'dashboard', label: 'Painel' },
+  { id: '/pedidos', icon: 'calendar_month', label: 'Agenda' },
+  { id: '/chat-list', icon: 'chat', label: 'Chat' },
+  { id: '/perfil', icon: 'person', label: 'Perfil' }
+];
+
 function BottomBar({ isDark }: any) {
   const { currentRole } = useContext(RoleContext);
   const loc = useLocation();
   
-  const clientTabs = [
-    { id: '/busca', icon: 'home', label: 'Home' },
-    { id: '/pesquisa', icon: 'search', label: 'Buscar' },
-    { id: '/pedidos', icon: 'assignment', label: 'Pedidos' },
-    { id: '/perfil', icon: 'person', label: 'Perfil' }
-  ];
-
-  const proTabs = [
-    { id: '/agenda', icon: 'dashboard', label: 'Painel' },
-    { id: '/pedidos', icon: 'calendar_month', label: 'Agenda' },
-    { id: '/chat-list', icon: 'chat', label: 'Chat' },
-    { id: '/perfil', icon: 'person', label: 'Perfil' }
-  ];
+  
 
   const tabs = clientTabs; // As requested, always show Home, Buscar, Pedidos, Perfil
   
