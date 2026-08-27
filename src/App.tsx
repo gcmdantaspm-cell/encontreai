@@ -203,7 +203,11 @@ function useAppointments(uid?: string, role?: string) {
     await updateDoc(doc(db, 'appointments', id), { status: st });
     load();
   };
-  return { apts, add, updateStatus };
+  const remove = async (id: string) => {
+    await deleteDoc(doc(db, 'appointments', id));
+    load();
+  };
+  return { apts, add, updateStatus, remove };
 }
 
 function useChat(uid?: string) {
@@ -748,9 +752,14 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
                    <h3 className="font-bold text-sm leading-tight mb-1">{s.title}</h3>
                    <span className={`font-black text-sm ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
                  </div>
-                 <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-md">
-                   <Icon name="calendar_month" size={18} />
-                 </button>
+                 <div className="flex gap-2 shrink-0">
+                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center active:scale-95 transition-transform shadow-md">
+                     <Icon name="calendar_month" size={18} />
+                   </button>
+                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } navigate(`/chat/${pro.id}`); }} className={`w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark ? 'border-[#3f3f46] text-white' : 'border-gray-300 text-black'}`}>
+                     <Icon name="chat" size={18} />
+                   </button>
+                 </div>
               </div>
             ))}
           </div>
@@ -1057,7 +1066,7 @@ function MyServicesScreen({ user, isDark, show }: any) {
 }
 
 function OrdersScreen({ user, pros, go, isDark, show }: any) {
-  const { apts, updateStatus } = useAppointments(user?.id, user?.role);
+  const { apts, updateStatus, remove } = useAppointments(user?.id, user?.role);
   const [filter, setFilter] = useState('all');
   
   useEffect(() => {
@@ -1207,6 +1216,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    {user.role === 'client' && a.status === 'completed' && !a.reviewed && (
                      <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">{user.role === 'professional' ? 'Avaliar Cliente' : 'Avaliar Serviço'}</button>
                    )}
+                   <button onClick={() => { if(window.confirm('Deseja excluir este pedido?')) remove(a.id); }} className="w-full mt-2 py-2 border border-red-500 text-red-500 rounded-lg text-xs font-bold active:scale-95 flex items-center justify-center gap-2"><Icon name="delete" size={16} /> Excluir Pedido</button>
                  </div>
                )
              })}
