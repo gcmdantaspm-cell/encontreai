@@ -8,6 +8,7 @@ import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged, createUserWi
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { GlobalNotifications } from "./components/GlobalNotifications";
 import { Logo } from "./components/Logo";
+import { Sidebar } from "./components/Sidebar";
 import { MapView } from "./components/MapView";
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
@@ -272,25 +273,30 @@ function ProtectedRoute({ allowedRole, children }: any) {
 function BottomBar({ isDark }: any) {
   const { currentRole } = useContext(RoleContext);
   const loc = useLocation();
+  
   const clientTabs = [
-    { id: '/busca', icon: 'search', label: 'Busca' },
-    { id: '/pedidos', icon: 'receipt_long', label: 'Pedidos' },
-    { id: '/perfil', icon: 'person', label: 'Perfil' }
+    { id: '/busca', icon: 'home', label: 'Home' },
+    { id: '/pesquisa', icon: 'search', label: 'Search' },
+    { id: '/pedidos', icon: 'assignment', label: 'My Requests' },
+    { id: '/perfil', icon: 'person', label: 'Profile' }
   ];
+
   const proTabs = [
     { id: '/agenda', icon: 'calendar_month', label: 'Agenda' },
+    { id: '/chat-list', icon: 'chat', label: 'Chat' },
     { id: '/meus-servicos', icon: 'work', label: 'Serviços' },
     { id: '/perfil', icon: 'person', label: 'Perfil' }
   ];
+
   const tabs = currentRole === 'professional' ? proTabs : clientTabs;
   
   return (
-    <div className={`w-full max-w-[448px] h-20 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className={`w-full max-w-[448px] h-16 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
        {tabs.map(t => {
          const active = loc.pathname.startsWith(t.id);
          return (
          <Link to={t.id} key={t.id} className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${active ? 'text-[#f97316]' : (isDark ? 'text-[#a1a1aa]' : 'text-gray-400')}`}>
-           <Icon name={t.icon} fill={active} />
+           <Icon name={t.icon} fill={active} size={24} />
            <span className="text-[10px] font-bold mt-1">{t.label}</span>
          </Link>
        )})}
@@ -305,6 +311,12 @@ function AppContent() {
   const { t, show } = useToast();
   
   const [currentRole, setCurrentRole] = useState(user?.currentMode || user?.role || 'client');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  useEffect(() => {
+    const handleOpen = () => setIsSidebarOpen(true);
+    window.addEventListener('open-sidebar', handleOpen);
+    return () => window.removeEventListener('open-sidebar', handleOpen);
+  }, []);
   useEffect(() => { if (user) setCurrentRole(user.currentMode || user.role); }, [user?.currentMode, user?.role]);
   
   const navigate = useNavigate();
@@ -327,19 +339,16 @@ function AppContent() {
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
       <GlobalNotifications user={user} isDark={isDark} />
+      <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
       <div className={`flex justify-center min-h-screen ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
         <div className={`w-full max-w-[448px] min-h-screen relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
           
           {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
-            <header className={`w-full sticky top-0 z-50 border-b flex items-center justify-between px-4 py-3 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
-              <button onClick={() => !user ? loginWithGoogle() : null} className={`w-9 h-9 rounded-full border flex items-center justify-center overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-[#f1f3f5]'}`}>
-                {user ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" fill size={20} className={isDark?'text-gray-300':'text-[#002a5d]'} />}
+            <header className={`w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
+              <button onClick={() => setIsSidebarOpen(true)} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+                <Icon name="menu" size={24} />
               </button>
-              <div className="flex gap-2">
-                {user && <Link to="/chat-list" className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#a1a1aa]':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name="chat" size={20} /></Link>}
-                {user && currentRole === 'client' && <button className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#a1a1aa]':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name="favorite" size={20} /></button>}
-                <button onClick={toggleDarkMode} className={`w-9 h-9 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46] text-amber-400':'bg-white border-[#e5e7eb] text-gray-500'}`}><Icon name={isDark?'light_mode':'dark_mode'} size={20} /></button>
-              </div>
+              <Logo isDark={isDark} hideSubtitle={true} />
             </header>
           )}
 
@@ -460,12 +469,11 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
       {/* Header handled by global layout? No, global layout only provides container. We need Header. */}
-      <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-          {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
-        </div>
+      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+          <Icon name="menu" size={24} />
+        </button>
         <Logo isDark={isDark} hideSubtitle={true} />
-        <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
       <div className={`px-4 pt-2 pb-6 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
