@@ -300,7 +300,7 @@ function BottomBar({ isDark }: any) {
   const tabs = currentRole === 'professional' ? proTabs : clientTabs;
   
   return (
-    <div className={`w-full max-w-[448px] shrink-0 h-16 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className={`w-full max-w-[448px] shrink-0 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
        {tabs.map(t => {
          const active = loc.pathname.startsWith(t.id);
          return (
