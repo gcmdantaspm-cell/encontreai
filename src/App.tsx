@@ -276,9 +276,9 @@ function BottomBar({ isDark }: any) {
   
   const clientTabs = [
     { id: '/busca', icon: 'home', label: 'Home' },
-    { id: '/pesquisa', icon: 'search', label: 'Search' },
-    { id: '/pedidos', icon: 'assignment', label: 'My Requests' },
-    { id: '/perfil', icon: 'person', label: 'Profile' }
+    { id: '/pesquisa', icon: 'search', label: 'Buscar' },
+    { id: '/pedidos', icon: 'assignment', label: 'Pedidos' },
+    { id: '/perfil', icon: 'person', label: 'Perfil' }
   ];
 
   const proTabs = [
@@ -541,7 +541,12 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
   const [filter, setFilter] = useState(loc.state?.filter || 'all');
   const [bookingService, setBookingService] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'list'|'map'>('list');
+  const [viewMode, setViewMode] = useState<'list'|'map'>(loc.state?.view || 'list');
+  useEffect(() => {
+    if(loc.state?.view) setViewMode(loc.state.view);
+    if(loc.state?.filter) setFilter(loc.state.filter);
+    if(loc.state?.q !== undefined || loc.state?.category) setQ(loc.state.q || loc.state.category || '');
+  }, [loc.state]);
   
   const allServices = useMemo(() => {
     return pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));

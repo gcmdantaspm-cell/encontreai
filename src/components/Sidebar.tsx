@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 function Icon({ name, className }: { name: string, className?: string }) {
   return <span className={`material-symbols-outlined ${className || ''}`}>{name}</span>;
@@ -8,6 +8,7 @@ function Icon({ name, className }: { name: string, className?: string }) {
 
 export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <AnimatePresence>
@@ -43,8 +44,8 @@ export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-lg leading-tight">{user?.name || 'User Name'}</span>
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>EncontreAi Member</span>
+                  <span className="font-bold text-lg leading-tight">{user?.name || 'Usuário'}</span>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Membro EncontreAi</span>
                 </div>
               </div>
             </div>
@@ -52,41 +53,41 @@ export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
             {/* Menu Items */}
             <div className="flex-1 overflow-y-auto py-4 flex flex-col px-4 gap-1">
               <button onClick={() => { navigate('/busca'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/busca' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-                <Icon name="home" /> Home
+                <Icon name="home" /> Início
               </button>
               <button onClick={() => { navigate('/perfil'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-                <Icon name="person" /> Profile
+                <Icon name="person" /> Perfil
               </button>
               <button onClick={() => { navigate('/busca', { state: { view: 'map' }}); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="location_on" /> Professionals Near Me
+                <Icon name="location_on" /> Profissionais Perto de Mim
               </button>
               <button onClick={() => { navigate('/busca'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="category" /> Categories
+                <Icon name="category" /> Categorias
               </button>
               <button onClick={() => { navigate('/busca', { state: { filter: 'favorites' }}); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="favorite_border" /> Favorites
+                <Icon name="favorite_border" /> Favoritos
               </button>
               <button onClick={() => { navigate('/pedidos'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-                <Icon name="calendar_today" /> My Appointments
+                <Icon name="calendar_today" /> Meus Pedidos
               </button>
 
               <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
 
               <button onClick={() => { navigate('/agenda'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="sync_alt" /> Professional Mode
+                <Icon name="sync_alt" /> Modo Profissional
               </button>
               <button onClick={close} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="settings" /> Settings
+                <Icon name="settings" /> Configurações
               </button>
               <button onClick={close} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="help_outline" /> Help & Support
+                <Icon name="help_outline" /> Ajuda e Suporte
               </button>
             </div>
 
             {/* Logout */}
             <div className={`p-4 border-t ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`}>
               <button onClick={() => { if(logout) logout(); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-bold text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full`}>
-                <Icon name="logout" /> Logout
+                <Icon name="logout" /> Sair
               </button>
             </div>
           </motion.div>
