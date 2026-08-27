@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import express from "express";
 import path from "path";
@@ -57,6 +58,53 @@ async function startServer() {
     } catch (err: any) {
       console.error("Stripe error:", err);
       res.status(500).json({ error: err.message || "Failed to create checkout session" });
+    }
+  });
+
+  
+  // Gemini AI route for semantic search / recommendation
+  app.post("/api/gemini/recommend", async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "API do Gemini não configurada (GEMINI_API_KEY ausente)." });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const { query, services } = req.body;
+      
+      const prompt = `
+      Você é um assistente de recomendação para o aplicativo "EncontreAí".
+      O usuário buscou por: "${query}".
+      
+      Aqui está a lista de serviços disponíveis na plataforma em formato JSON:
+      ${JSON.stringify(services)}
+      
+      Sua tarefa é analisar semanticamente a busca do usuário e retornar os IDs dos serviços que melhor atendem a essa necessidade. 
+      Por exemplo, se o usuário buscar "alguém para consertar meu cano", você deve recomendar serviços de encanador/reparos.
+      Se não houver serviços adequados, retorne uma lista vazia.
+      
+      Responda EXCLUSIVAMENTE em formato JSON válido contendo um array de strings com os IDs dos serviços recomendados, e um pequeno texto de "reasoning" (explicação).
+      Exemplo de saída:
+      {
+        "recommendedIds": ["id1", "id2"],
+        "reasoning": "Encontrei profissionais de encanamento que podem te ajudar com o vazamento."
+      }
+      `;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+           responseMimeType: 'application/json'
+        }
+      });
+      
+      const jsonResponse = JSON.parse(response.text || '{}');
+      res.json(jsonResponse);
+    } catch (err: any) {
+      console.error("Gemini API error:", err);
+      res.status(500).json({ error: err.message || "Falha na comunicação com a IA." });
     }
   });
 

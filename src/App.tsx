@@ -1,9 +1,11 @@
+import { Navbar } from './components/Navbar';
+import { OfflineBanner } from './components/OfflineBanner';
 import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation, useParams, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CATEGORIES, PROFESSIONALS, MOCK_REVIEWS, MOCK_COUPONS } from './data';
 import { Professional, UserRole, AppUser, ProfService, Appointment, Review, ChatMessage, Coupon } from './types';
-import { auth, db, googleProvider } from './firebase';
+import { auth, db, googleProvider } from './services/firebaseService';
 import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { GlobalNotifications } from "./components/GlobalNotifications";
@@ -346,6 +348,21 @@ function BottomBar({ isDark }: any) {
   )
 }
 
+
+function NotFoundScreen({ isDark }: any) {
+  const navigate = useNavigate();
+  return (
+    <div className={`flex-1 h-full flex flex-col items-center justify-center p-6 text-center ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+      <Icon name="sentiment_dissatisfied" size={64} className="mb-4 opacity-50" />
+      <h1 className="text-3xl font-black mb-2">Ops! Tela não encontrada</h1>
+      <p className="mb-6 opacity-70">A página que você está procurando não existe ou foi movida.</p>
+      <button onClick={() => navigate('/busca')} className="px-6 py-3 bg-[#f97316] text-black font-bold rounded-xl active:scale-95 transition-transform shadow-md">
+        Voltar para o Início
+      </button>
+    </div>
+  );
+}
+
 function AppContent() {
   const { user, loading, authError, loginWithGoogle, loginWithEmail, registerWithEmail, logout, updateRole, toggleFavorite, updateProfile } = useAuth();
   const { pros } = useSearch();
@@ -383,46 +400,37 @@ function AppContent() {
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
       <GlobalNotifications user={user} isDark={isDark} />
-      <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
+      
       <div className={`flex justify-center h-screen h-[100dvh] overflow-hidden ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
-        <div className={`w-full max-w-7xl h-full relative flex overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
-          {!hideBottomNav && !isProPanel && (
-             <div className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
-                <div className="p-6">
-                   <Logo isDark={isDark} hideSubtitle={false} />
-                </div>
-                <div className="flex flex-col gap-2 px-4 mt-4 flex-1">
-                   {clientTabs.map(t => {
-                     const active = loc.pathname.startsWith(t.id);
-                     return (
-                       <Link to={t.id} key={t.id} className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${active ? 'bg-[#f97316] text-white' : (isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200')}`}>
-                         <Icon name={t.icon} fill={active} size={24} />
-                         <span>{t.label}</span>
-                       </Link>
-                     )
-                   })}
-                </div>
-                <div className="p-4 mb-4">
-                   <button onClick={logout} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200'}`}>
-                     <Icon name="logout" size={24} />
-                     <span>Sair</span>
-                   </button>
-                </div>
-             </div>
-          )}
-          <div className="flex-1 flex flex-col relative overflow-hidden min-w-0">
+        <div className={`w-full max-w-7xl h-full relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
           
-          {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
-            <header className={`lg:hidden w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
-              <button onClick={() => setIsSidebarOpen(true)} className={`absolute left-4 w-11 h-11 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-                <Icon name="menu" size={24} />
-              </button>
-              <Logo isDark={isDark} hideSubtitle={true} />
-            </header>
+          {!hideBottomNav && (
+            <Navbar 
+              isDark={isDark} 
+              toggleDarkMode={toggleDarkMode} 
+              user={user} 
+              currentRole={currentRole} 
+              updateRole={updateRole} 
+              logout={logout} 
+              toggleSidebar={() => setIsSidebarOpen(true)} 
+            />
           )}
 
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <Routes>
+          <div className="flex-1 flex flex-row relative overflow-hidden min-w-0">
+            {!hideBottomNav && !isProPanel && (
+              <Sidebar 
+                isOpen={isSidebarOpen} 
+                close={() => setIsSidebarOpen(false)} 
+                user={user} 
+                isDark={isDark} 
+                logout={logout} 
+                categories={categories} 
+              />
+            )}
+
+            <div className="flex-1 flex flex-col relative overflow-hidden min-w-0">
+              <div className="flex-1 overflow-y-auto min-h-0 relative">
+                <Routes>
                <Route path="/" element={<Navigate to="/busca" />} />
                <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
                <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
@@ -441,10 +449,11 @@ function AppContent() {
                <Route path="/painel-profissional/*" element={<ProtectedRoute allowedRole="professional"><ProPanelScreen user={user} isDark={isDark} show={show} go={go} categories={categories} addCategory={addCategory} /></ProtectedRoute>} />
                <Route path="/chat-list" element={<ChatListScreen user={user} pros={pros} go={go} isDark={isDark} />} />
                <Route path="/chat/:id" element={<ChatDetailScreen user={user} go={go} isDark={isDark} />} />
-            </Routes>
-          </div>
-          
-          {!hideBottomNav && <BottomBar isDark={isDark} />}
+              <Route path="*" element={<NotFoundScreen isDark={isDark} />} />
+                        </Routes>
+              </div>
+              {!hideBottomNav && <BottomBar isDark={isDark} />}
+            </div>
           </div>
         </div>
       </div>
@@ -1068,7 +1077,7 @@ function ProDashboardView({ user, isDark }: any) {
                        if(snap.exists()) {
                           const data = snap.data();
                           const currentBalance = data.walletBalance || 0;
-                          const newBalance = currentBalance + (a.price * 0.93);
+                          const newBalance = currentBalance + (a.price * 0.95);
                           updateDoc(proRef, { walletBalance: newBalance });
                        }
                      });
@@ -1332,12 +1341,26 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if(params.get('payment') === 'success') {
-       if(show) show('Pagamento confirmado com sucesso! Dinheiro retido.');
+    const paymentStatus = params.get('payment');
+    const proposalId = params.get('proposalId');
+    if(paymentStatus === 'success' && proposalId) {
+       updateStatus(proposalId, 'approved');
+       
+       // Update chat message if chatMsgId exists on this appointment
+       getDoc(doc(db, 'appointments', proposalId)).then(snap => {
+         if (snap.exists() && snap.data().chatMsgId) {
+           updateDoc(doc(db, 'chats', snap.data().chatMsgId), { 'proposal.status': 'paid' }).catch(console.error);
+         }
+       }).catch(console.error);
+
+       if(show) show('Pagamento confirmado com sucesso! Dinheiro retido. Código gerado.');
        // Clean up URL
        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentStatus === 'success') {
+       if(show) show('Pagamento confirmado com sucesso! Dinheiro retido.');
+       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [show]);
+  }, [show, updateStatus]);
   const [reviewModal, setReviewModal] = useState<any>(null);
   const [checkoutOrder, setCheckoutOrder] = useState<any>(null);
 
@@ -1379,12 +1402,12 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   };
 
   if (!user) return null;
-  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending' || a.status === 'pending_payment')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
+  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending' || a.status === 'pending_payment' || a.status === 'in_progress')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
       <div className="px-4 mt-4 max-w-6xl mx-auto w-full">
-        <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Pedidos'}</h1>
+        <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Serviços'}</h1>
         <p className={`text-sm mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe o status dos seus serviços solicitados.</p>
         
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 mb-2">
@@ -1397,10 +1420,11 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
              {filtered.map(a => {
                const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
-                 pending: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
-                 pending_payment: { label: 'Aguardando Pagamento', border: '#eab308', badgeBg: isDark ? '#fef08a' : '#fef08a', badgeText: '#854d0e' },
-                 approved: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
-                 completed: { label: user.role === 'professional' ? 'Pagamento recebido' : 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
+                 pending: { label: 'Pendente Aprovação do Prestador', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
+                 pending_payment: { label: 'Pendente Pagamento', border: '#eab308', badgeBg: isDark ? '#fef08a' : '#fef08a', badgeText: '#854d0e' },
+                 approved: { label: 'Pagamento Confirmado - Aguardando Execução', border: '#3b82f6', badgeBg: isDark ? '#dbeafe' : '#dbeafe', badgeText: '#1e40af' },
+                 in_progress: { label: 'Em Execução', border: '#8b5cf6', badgeBg: isDark ? '#ede9fe' : '#ede9fe', badgeText: '#5b21b6' },
+                 completed: { label: 'Finalizado', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
                  cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#fee2e2' : '#fee2e2', badgeText: '#991b1b' }
                };
                const cfg = stCfg[a.status] || stCfg.pending;
@@ -1470,7 +1494,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    )}
                    {user.role === 'professional' && a.status === 'pending' && (
                      <div className="flex gap-2 mt-2">
-                       <button onClick={()=>updateStatus(a.id, 'approved')} className="flex-1 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Aceitar</button>
+                       <button onClick={()=>updateStatus(a.id, 'pending_payment')} className="flex-1 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Aceitar</button>
                        <button onClick={()=>updateStatus(a.id, 'cancelled')} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-xs font-bold active:scale-95">Recusar</button>
                      </div>
                    )}
@@ -1998,7 +2022,7 @@ function ChatDetailScreen({ user, isDark }: any) {
       paymentMethod: '',
       chatMsgId: msg.id
     });
-    alert('Proposta aceita! O pedido foi gerado em Meus Pedidos para pagamento.');
+    alert('Proposta aceita! O pedido foi gerado em Meus Serviços para pagamento.');
   };
 
   const handleReject = (msg: any) => {
