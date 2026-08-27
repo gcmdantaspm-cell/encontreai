@@ -427,6 +427,7 @@ function AppContent() {
                <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
                <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
                <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
+               <Route path="/favoritos" element={<FavoritesScreen user={user} pros={pros} isDark={isDark} toggleFavorite={toggleFavorite} show={show} />} />
                
                <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />
                <Route path="/auth" element={<AuthScreen loginWithGoogle={loginWithGoogle} loginWithEmail={loginWithEmail} registerWithEmail={registerWithEmail} isDark={isDark} show={show} />} />
@@ -603,6 +604,79 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
       </div>
     </div>
   )
+}
+
+
+function FavoritesScreen({ user, pros, isDark, toggleFavorite, show }: any) {
+  const navigate = useNavigate();
+  
+  const favoritePros = useMemo(() => {
+    if (!user || !user.favorites || !pros) return [];
+    return pros.filter((p: any) => user.favorites.includes(p.id));
+  }, [user, pros]);
+
+  return (
+    <div className={`h-full flex-1 flex flex-col overflow-y-auto pb-24 ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+      <div className={`px-6 py-8 border-b ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-white'}`}>
+        <h1 className="font-black text-2xl mb-1 flex items-center gap-2">
+          <Icon name="favorite" className="text-red-500" /> Meus Favoritos
+        </h1>
+        <p className={`text-sm ${isDark?'text-gray-400':'text-gray-500'}`}>Profissionais e serviços que você salvou.</p>
+      </div>
+
+      <div className="p-4 md:p-6 max-w-6xl mx-auto w-full flex-1">
+        {favoritePros.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center h-full">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 ${isDark?'bg-[#27272a]':'bg-gray-100'}`}>
+              <Icon name="favorite_border" size={48} className={isDark?'text-gray-500':'text-gray-400'} />
+            </div>
+            <h2 className="font-bold text-xl mb-2">Você ainda não tem favoritos</h2>
+            <p className={`text-sm mb-6 ${isDark?'text-gray-400':'text-gray-500'}`}>Navegue pelas categorias e salve os profissionais que você mais gostar.</p>
+            <button onClick={() => navigate('/busca')} className="px-6 py-3 bg-[#f97316] text-black font-bold rounded-xl active:scale-95 transition-transform shadow-md">
+              Explorar Profissionais
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {favoritePros.map((pro: any) => (
+              <div key={pro.id} className={`flex flex-col rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                <div className="h-32 relative bg-gray-200 dark:bg-gray-800 cursor-pointer" onClick={() => navigate(`/servico/${pro.id}`)}>
+                  <img src={pro.coverUrl || pro.avatarUrl} className="w-full h-full object-cover opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  
+                  <button onClick={(e) => { e.stopPropagation(); toggleFavorite(pro.id); }} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform hover:bg-white/40 z-10">
+                    <Icon name="favorite" size={16} fill className="text-red-500" />
+                  </button>
+                  
+                  <div className="absolute -bottom-6 left-4">
+                    <div className="w-16 h-16 rounded-full border-4 overflow-hidden bg-gray-300 dark:bg-gray-700 border-white dark:border-[#27272a]">
+                      <img src={pro.avatarUrl} className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-8 px-4 pb-4 flex flex-col flex-1">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-bold text-lg leading-tight cursor-pointer hover:underline" onClick={() => navigate(`/servico/${pro.id}`)}>{pro.name}</h3>
+                    <div className="flex items-center text-[#f97316] font-bold text-sm bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg shrink-0">
+                      <Icon name="star" size={14} fill /> {pro.rating.toFixed(1)}
+                    </div>
+                  </div>
+                  <p className={`text-xs font-medium mb-3 ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>{pro.profession}</p>
+                  
+                  <p className={`text-xs line-clamp-2 mb-4 flex-1 ${isDark?'text-gray-400':'text-gray-600'}`}>{pro.description}</p>
+                  
+                  <button onClick={() => navigate(`/servico/${pro.id}`)} className={`w-full py-2.5 rounded-xl text-sm font-bold transition-colors border ${isDark?'border-[#3f3f46] hover:bg-[#3f3f46]':'border-gray-200 hover:bg-gray-50'}`}>
+                    Ver Perfil Completo
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: any) {

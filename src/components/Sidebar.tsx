@@ -82,7 +82,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any
                 </AnimatePresence>
               </div>
 
-              <button onClick={() => { navigate('/busca', { state: { filter: 'favorites' }}); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
+                            <button onClick={() => { navigate('/favoritos'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/favoritos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
                 <Icon name="favorite_border" /> Favoritos
               </button>
               <button onClick={() => { navigate('/pedidos'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
