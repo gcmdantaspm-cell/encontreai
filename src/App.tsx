@@ -340,8 +340,8 @@ function AppContent() {
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
       <GlobalNotifications user={user} isDark={isDark} />
       <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
-      <div className={`flex justify-center min-h-screen ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
-        <div className={`w-full max-w-[448px] min-h-screen relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+      <div className={`flex justify-center h-screen h-[100dvh] overflow-hidden ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
+        <div className={`w-full max-w-[448px] h-full relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
           
           {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
             <header className={`w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
@@ -514,7 +514,7 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
           {topServices.map((s:any) => (
             <Link to={`/servico/${s.id}`} key={s.id} className={`flex items-stretch gap-4 p-3 rounded-2xl border shadow-sm active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
               <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
-                <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
+                <img src={s.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col justify-center flex-1 py-1">
                 <div className="flex items-center gap-1 mb-0.5">
@@ -627,7 +627,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
                 return (
                   <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
                     <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
-                       <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
+                       <img src={s.imageUrls?.[0] || s.imageUrl || s.pro?.avatarUrl || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop"} className="w-full h-full object-cover" />
                        <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
                          <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
                        </button>
@@ -638,7 +638,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
                           <h3 className={`font-bold text-[15px] leading-tight mb-1 line-clamp-1 ${isDark?'text-white':'text-[#002a5d]'}`}>{s.title}</h3>
                           <Link to={`/servico/${s.id}`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
                              <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
-                                <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
+                                <img src={s.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
                              </div>
                              <span className={`text-xs font-medium ${isDark?'text-gray-300':'text-gray-700'}`}>{s.pro.name}</span>
                              <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
@@ -708,7 +708,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
         
         <div className="absolute -bottom-10 left-4 flex items-end gap-4">
           <div className={`w-24 h-24 rounded-full border-4 overflow-hidden ${isDark?'border-[#121212] bg-gray-800':'border-[#f8f9fa] bg-gray-200'}`}>
-            <img src={pro.avatarUrl} className="w-full h-full object-cover" />
+            <img src={pro.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
@@ -737,7 +737,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
             {pro.services.map((s:any) => (
               <div key={s.id} className={`p-3 rounded-2xl border flex items-center gap-3 shadow-sm ${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}`}>
                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-800 shrink-0">
-                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl} className="w-full h-full object-cover" />
+                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop"} className="w-full h-full object-cover" />
                  </div>
                  <div className="flex-1">
                    <h3 className="font-bold text-sm leading-tight mb-1">{s.title}</h3>
@@ -1128,7 +1128,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    <div className="flex justify-between items-start pl-1">
                      <div className="flex gap-3">
                        {user.role === 'client' && pro?.avatarUrl ? (
-                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"><img src={pro.avatarUrl} className="w-full h-full object-cover"/></div>
+                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"><img src={pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover"/></div>
                        ) : <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center shrink-0"><Icon name="person" className="opacity-50" /></div>}
                        <div>
                          <div className="flex items-center gap-1 mb-0.5">
@@ -1194,7 +1194,7 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
   const isFav = user?.favorites?.includes(pro.id);
 
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+    <div className={`h-full flex flex-col overflow-hidden ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
       <header className="absolute top-0 w-full z-50 flex items-center justify-between px-4 py-3">
         <button onClick={onBack} className="p-2 rounded-full bg-black/20 backdrop-blur-sm text-white"><Icon name="arrow_back" /></button>
         <button onClick={() => { if(!user) go('auth'); else toggleFavorite(pro.id); }} className="p-2 rounded-full bg-black/20 backdrop-blur-sm"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'} /></button>
@@ -1329,7 +1329,7 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
         <div className="p-4">
           <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] p-4 flex gap-4 mb-6 shadow-sm">
             <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 relative">
-               <img src={svc.pro.avatarUrl} className="w-full h-full object-cover" />
+               <img src={svc?.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
                {svc.pro.verified && <div className="absolute top-2 right-2 p-0.5 bg-white rounded-full flex items-center justify-center"><Icon name="verified" size={16} className="text-blue-600" fill/></div>}
             </div>
             <div className="flex flex-col justify-center">
@@ -1763,7 +1763,7 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
         
         <div className="flex flex-col gap-4 mb-6">
           <input value={av} onChange={e=>setAv(e.target.value)} placeholder="URL da Foto de Perfil" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
-          {user.role === 'professional' && (
+          {true && (
             <>
               <input value={profession} onChange={e=>setProfession(e.target.value)} placeholder="Sua Profissão" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
               <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Sua Descrição" className={`w-full p-4 rounded-xl border outline-none text-sm min-h-[100px] ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
@@ -1810,7 +1810,7 @@ function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, 
         </h1>
         <p className={`text-sm font-medium mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{user.email}</p>
 
-        {user.role === 'professional' && (
+        {true && (
           <div className={`p-5 rounded-3xl border mb-6 ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
             <h3 className="font-black text-lg mb-1">Alternar Modo</h3>
             <p className={`text-xs mb-4 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Alterne entre a visão de prestador e cliente.</p>
