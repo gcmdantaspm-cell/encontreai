@@ -297,7 +297,7 @@ function BottomBar({ isDark }: any) {
     { id: '/perfil', icon: 'person', label: 'Perfil' }
   ];
 
-  const tabs = currentRole === 'professional' ? proTabs : clientTabs;
+  const tabs = clientTabs; // As requested, always show Home, Buscar, Pedidos, Perfil
   
   return (
     <div className={`w-full max-w-[448px] shrink-0 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 mb-[calc(-1*env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
@@ -365,6 +365,7 @@ function AppContent() {
             <Routes>
                <Route path="/" element={<Navigate to="/busca" />} />
                <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
+               <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} />} />
                <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
                
                <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />

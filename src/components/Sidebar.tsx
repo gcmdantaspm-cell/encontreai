@@ -74,7 +74,10 @@ export function Sidebar({ isOpen, close, user, isDark, logout }: any) {
               <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
 
               <button onClick={() => { navigate('/agenda'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-                <Icon name="sync_alt" /> Modo Profissional
+                <Icon name="dashboard" /> Painel do Profissional
+              </button>
+              <button onClick={() => { navigate('/chat-list'); close(); }} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
+                <Icon name="chat" /> Minhas Mensagens
               </button>
               <button onClick={close} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
                 <Icon name="settings" /> Configurações
