@@ -282,9 +282,9 @@ function BottomBar({ isDark }: any) {
   ];
 
   const proTabs = [
-    { id: '/agenda', icon: 'calendar_month', label: 'Agenda' },
+    { id: '/agenda', icon: 'dashboard', label: 'Painel' },
+    { id: '/pedidos', icon: 'calendar_month', label: 'Agenda' },
     { id: '/chat-list', icon: 'chat', label: 'Chat' },
-    { id: '/meus-servicos', icon: 'work', label: 'Serviços' },
     { id: '/perfil', icon: 'person', label: 'Perfil' }
   ];
 
@@ -668,9 +668,9 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
              proId={bookingService.pro.id} 
              svc={bookingService} 
              onClose={()=>setBookingService(null)} 
-             onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
-                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
-                setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
+             onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number, paymentMethod:string)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'approved', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, paymentMethod, createdAt: new Date().toISOString() });
+                setBookingService(null); show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); navigate('/pedidos');
              }} 
              isDark={isDark} 
           />}
@@ -782,10 +782,10 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
             proId={pro.id} 
             svc={bookingService} 
             onClose={()=>setBookingService(null)} 
-            onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
-                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
-              setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
-            }} 
+            onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number, paymentMethod:string)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'approved', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, paymentMethod, createdAt: new Date().toISOString() });
+                setBookingService(null); show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); navigate('/pedidos');
+             }} 
             isDark={isDark} 
           />
         }
@@ -797,7 +797,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
 function DashboardProScreen({ user, isDark, go }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const pending = apts.filter(a => a.status === 'approved');
-  const earned = apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + a.price, 0);
+  const earned = apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.price * 0.93), 0);
 
   return (
     <div className="pb-24">
@@ -848,7 +848,19 @@ function DashboardProScreen({ user, isDark, go }: any) {
              <p className={`text-sm font-medium flex items-center gap-1 mb-4 ${isDark?'text-[#e4e4e7]':'text-gray-700'}`}><Icon name="schedule" size={16}/> {a.date} às {a.time}</p>
              <div className="flex gap-2">
                <button onClick={()=>go('chat-detail', {id: a.clientId, name: a.clientName})} className={`flex-1 py-3 rounded-xl border font-bold text-sm flex items-center justify-center gap-1 ${isDark?'border-[#3f3f46]':'border-[#e5e7eb]'}`}><Icon name="chat" size={16}/> Chat</button>
-               <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-3 rounded-xl bg-[#4ade80] text-[#14532d] font-bold text-sm flex items-center justify-center gap-1"><Icon name="check_circle" size={16}/> Concluir</button>
+               
+                 <button onClick={() => {
+                   const codeStr = prompt('Digite o código de 4 dígitos do cliente:');
+                   if(!codeStr) return;
+                   const confirmCode = (a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase();
+                   if (codeStr.toUpperCase() === confirmCode) {
+                     updateStatus(a.id, 'completed');
+                     alert('Código confirmado! O valor foi liberado e creditado na sua conta.');
+                   } else {
+                     alert('Código inválido. Tente novamente.');
+                   }
+                 }} className="flex-1 py-3 rounded-xl bg-[#4ade80] text-[#14532d] font-bold text-sm flex items-center justify-center gap-1"><Icon name="check_circle" size={16}/> Validar Código</button>
+
              </div>
            </div>
          ))}
@@ -1152,8 +1164,21 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
 
                    {/* Pro Controls */}
                    {user.role === 'professional' && a.status === 'approved' && (
-                     <div className="flex gap-2 mt-2">
-                       <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Marcar Concluído</button>
+                     <div className="flex flex-col gap-2 mt-2 p-3 bg-gray-50 dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-[#3f3f46]">
+                       <p className="text-xs text-center font-bold">Inserir Código do Cliente</p>
+                       <div className="flex gap-2">
+                         <input id={`code-${a.id}`} placeholder="EX: A1B2" className={`flex-1 px-3 py-2 border rounded-lg text-center font-bold uppercase ${isDark ? 'bg-[#18181b] border-[#3f3f46]' : 'bg-white'}`} maxLength={4} />
+                         <button onClick={() => {
+                           const el = document.getElementById(`code-${a.id}`) as HTMLInputElement;
+                           const confirmCode = (a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase();
+                           if (el?.value.toUpperCase() === confirmCode) {
+                              updateStatus(a.id, 'completed');
+                              if(show) show('Código confirmado! 93% do valor foi creditado.');
+                           } else {
+                              if(show) show('Código inválido. Tente novamente.');
+                           }
+                         }} className="px-4 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Validar</button>
+                       </div>
                      </div>
                    )}
                    {user.role === 'professional' && a.status === 'pending' && (
@@ -1168,8 +1193,10 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    )}
                    {/* Client Controls */}
                    {user.role === 'client' && a.status === 'approved' && (
-                     <div className="flex gap-2 mt-2">
-                       <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Concluir Atendimento</button>
+                     <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                       <p className="text-xs text-center font-bold text-blue-600 dark:text-blue-400">Código de Liberação</p>
+                       <p className="text-2xl text-center font-black tracking-widest text-[#002a5d] dark:text-white">{(a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase()}</p>
+                       <p className="text-[10px] text-center text-gray-500 dark:text-gray-400">Forneça este código ao profissional apenas após a conclusão do serviço para liberar o pagamento.</p>
                      </div>
                    )}
                    {user.role === 'client' && a.status === 'completed' && !a.reviewed && (
@@ -1266,9 +1293,9 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         </div>
       </div>
       <AnimatePresence>
-        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={(d:any, t:any, addons:any, recurrence:any, totalPrice:any, paymentMethod:any) => { 
-add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
-show(`Pagamento concluído via ${paymentMethod}! Reserva confirmada.`); go('orders'); }} isDark={isDark} />}
+        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={async (d:any, t:any, addons:any, recurrence:any, totalPrice:any, paymentMethod:any) => { 
+                add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
+                show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); go('orders'); }} isDark={isDark} />}
       </AnimatePresence>
     </div>
   );
@@ -1322,7 +1349,7 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-[#f8f9fa] dark:bg-[#121212] z-[100] overflow-y-auto hide-scrollbar pb-36">
         
         <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
-          <button onClick={onClose} className="p-2"><Icon name="arrow_back" className="text-[#002a5d] dark:text-white" /></button>
+          <button onClick={() => step === 2 ? setStep(1) : onClose()} className="p-2"><Icon name="arrow_back" className="text-[#002a5d] dark:text-white" /></button>
           <h1 className="font-black text-xl text-[#002a5d] dark:text-white tracking-tight">Confirmar Agendamento</h1>
         </header>
         
@@ -1342,81 +1369,123 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
             </div>
           </div>
 
-          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Escolha a Data</h2>
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 mb-6">
-            {nextDays.map(date => {
-              const iso = date.toISOString().split('T')[0];
-              const isSelected = d === iso;
-              const weekDay = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][date.getDay()];
-              const dayNum = date.getDate();
-              return (
-                <button 
-                  key={iso} 
-                  onClick={() => { setD(iso); setT(''); }}
-                  className={`w-[72px] shrink-0 aspect-[3/4] rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-600 dark:border-blue-400' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}
-                >
-                  <span className={`text-xs font-bold ${isSelected ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`}>{weekDay}</span>
-                  <span className={`text-xl font-black ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>{dayNum}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Horários Disponíveis</h2>
-          {!d ? (
-            <p className="text-sm text-gray-500 font-medium mb-6">Selecione uma data para ver os horários.</p>
-          ) : !isDayAvailable ? (
-            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold text-center mb-6">
-              O profissional não atende neste dia.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {availableHours.map((h: string) => {
-                const isOccupied = occupiedTimes.includes(h);
-                const isSelected = t === h;
+          {step === 1 ? (
+          <>
+            <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Escolha a Data</h2>
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 mb-6">
+              {nextDays.map(date => {
+                const iso = date.toISOString().split('T')[0];
+                const isSelected = d === iso;
+                const weekDay = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][date.getDay()];
+                const dayNum = date.getDate();
                 return (
                   <button 
-                    key={h} 
-                    disabled={isOccupied} 
-                    onClick={()=>setT(h)} 
-                    className={`py-3 rounded-xl text-sm font-bold border transition-colors ${isOccupied ? 'opacity-30 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-[#2a2a2a] cursor-not-allowed text-gray-400' : isSelected ? 'bg-[#ffedd5] dark:bg-[#f97316] text-[#9a3412] dark:text-black border-[#f97316]' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a] text-gray-800 dark:text-gray-200'}`}
+                    key={iso} 
+                    onClick={() => { setD(iso); setT(''); }}
+                    className={`w-[72px] shrink-0 aspect-[3/4] rounded-xl border flex flex-col items-center justify-center gap-1 transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-600 dark:border-blue-400' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}
                   >
-                    {h}
+                    <span className={`text-xs font-bold ${isSelected ? 'text-blue-500' : 'text-gray-500 dark:text-gray-400'}`}>{weekDay}</span>
+                    <span className={`text-xl font-black ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>{dayNum}</span>
                   </button>
+                )
+              })}
+            </div>
+
+            <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Horários Disponíveis</h2>
+            {!d ? (
+              <p className="text-sm text-gray-500 font-medium mb-6">Selecione uma data para ver os horários.</p>
+            ) : !isDayAvailable ? (
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold text-center mb-6">
+                O profissional não atende neste dia.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {availableHours.map((h: string) => {
+                  const isOccupied = occupiedTimes.includes(h);
+                  const isSelected = t === h;
+                  return (
+                    <button 
+                      key={h} 
+                      disabled={isOccupied} 
+                      onClick={()=>setT(h)}
+                      className={`py-3 rounded-xl text-sm font-bold border transition-colors ${isOccupied ? 'opacity-30 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-[#2a2a2a] cursor-not-allowed text-gray-400' : isSelected ? 'bg-[#ffedd5] dark:bg-[#f97316] text-[#9a3412] dark:text-black border-[#f97316]' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a] text-gray-800 dark:text-gray-200'}`}
+                    >
+                      {h}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+              
+            <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Serviços Adicionais (Modulares)</h2>
+            <div className="flex flex-col gap-3 mb-6">
+              {addons.map((a:any) => {
+                const isSelected = selectedAddons.includes(a.id);
+                return (
+                  <label key={a.id} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                        {isSelected && <Icon name="check" size={16} />}
+                      </div>
+                      <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{a.name}</span>
+                    </div>
+                    <span className="font-black text-sm text-[#002a5d] dark:text-[#60a5fa]">+ R$ {a.price.toFixed(2)}</span>
+                    <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAddon(a.id)} />
+                  </label>
                 );
               })}
             </div>
-          )}
-          
-          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Serviços Adicionais (Modulares)</h2>
-          <div className="flex flex-col gap-3 mb-6">
-            {addons.map((a:any) => {
-              const isSelected = selectedAddons.includes(a.id);
-              return (
-                <label key={a.id} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-6 h-6 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {isSelected && <Icon name="check" size={16} />}
-                    </div>
-                    <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{a.name}</span>
-                  </div>
-                  <span className="font-black text-sm text-[#002a5d] dark:text-[#60a5fa]">+ R$ {a.price.toFixed(2)}</span>
-                  <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAddon(a.id)} />
+
+            <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Tornar este agendamento recorrente?</h2>
+            <div className="flex bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden mb-6">
+              <button onClick={() => setRecurrence('once')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'once' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Única vez</button>
+              <button onClick={() => setRecurrence('weekly')} className={`flex-1 py-3 text-xs font-bold transition-colors border-x border-gray-200 dark:border-[#2a2a2a] ${recurrence === 'weekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Semanal</button>
+              <button onClick={() => setRecurrence('biweekly')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'biweekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Quinzenal</button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div>
+              <h2 className="font-bold text-xl mb-2 text-gray-900 dark:text-white">Resumo do Pedido</h2>
+              <div className="p-4 rounded-xl border border-gray-200 dark:border-[#2a2a2a] bg-gray-50 dark:bg-black/20 text-sm">
+                <p><strong>Data:</strong> {d} às {t}</p>
+                <p><strong>Recorrência:</strong> {recurrence === 'once' ? 'Única vez' : recurrence === 'weekly' ? 'Semanal' : 'Quinzenal'}</p>
+                {selectedAddons.length > 0 && <p><strong>Adicionais:</strong> {addons.filter((a:any)=>selectedAddons.includes(a.id)).map((a:any)=>a.name).join(', ')}</p>}
+                <p className="mt-2 font-bold text-[#f97316]">R$ {totalPrice.toFixed(2)} (Taxa de agendamento inclusa)</p>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="font-bold text-xl mb-4 text-gray-900 dark:text-white">Forma de Pagamento</h2>
+              <div className="flex flex-col gap-3">
+                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'PIX' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
+                  <Icon name="pix" size={24} className="text-teal-500" />
+                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">PIX (Aprovação imediata)</span>
+                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'PIX'} onChange={() => setPaymentMethod('PIX')} />
                 </label>
-              );
-            })}
-          </div>
 
-          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Tornar este agendamento recorrente?</h2>
-          <div className="flex bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden mb-6">
-            <button onClick={() => setRecurrence('once')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'once' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Única vez</button>
-            <button onClick={() => setRecurrence('weekly')} className={`flex-1 py-3 text-xs font-bold transition-colors border-x border-gray-200 dark:border-[#2a2a2a] ${recurrence === 'weekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Semanal</button>
-            <button onClick={() => setRecurrence('biweekly')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'biweekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Quinzenal</button>
-          </div>
+                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'CREDIT_CARD' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
+                  <Icon name="credit_card" size={24} className="text-blue-500" />
+                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">Cartão de Crédito</span>
+                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'CREDIT_CARD'} onChange={() => setPaymentMethod('CREDIT_CARD')} />
+                </label>
 
-        </div>
-        
-        <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
+                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'DEBIT_CARD' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
+                  <Icon name="account_balance_wallet" size={24} className="text-purple-500" />
+                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">Cartão de Débito</span>
+                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'DEBIT_CARD'} onChange={() => setPaymentMethod('DEBIT_CARD')} />
+                </label>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-orange-50 dark:bg-[#2a1708] border border-orange-200 dark:border-orange-900 text-xs text-orange-800 dark:text-orange-200">
+              <p className="font-bold mb-1"><Icon name="lock" size={14} className="inline mr-1" />Pagamento Seguro (Sistema Anticálculo)</p>
+              <p>O seu dinheiro fica retido com a plataforma e só é repassado ao profissional (93%) mediante o fornecimento do seu código secreto no ato do serviço.</p>
+            </div>
+          </div>
+        )}
+
+        </div><div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total {recurrence !== 'once' && `(por sessão)`}</span>
             <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {totalPrice.toFixed(2)}</span>
