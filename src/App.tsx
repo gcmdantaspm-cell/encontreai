@@ -1167,6 +1167,11 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                      <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Cliente</button>
                    )}
                    {/* Client Controls */}
+                   {user.role === 'client' && a.status === 'approved' && (
+                     <div className="flex gap-2 mt-2">
+                       <button onClick={()=>updateStatus(a.id, 'completed')} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold active:scale-95">Concluir Atendimento</button>
+                     </div>
+                   )}
                    {user.role === 'client' && a.status === 'completed' && !a.reviewed && (
                      <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">{user.role === 'professional' ? 'Avaliar Cliente' : 'Avaliar Serviço'}</button>
                    )}
@@ -1261,15 +1266,17 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         </div>
       </div>
       <AnimatePresence>
-        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={(d:string, t:string) => { 
-add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name }); setBookModal(null); 
-show('Agendado com sucesso!'); go('orders'); }} isDark={isDark} />}
+        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={(d:any, t:any, addons:any, recurrence:any, totalPrice:any, paymentMethod:any) => { 
+add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
+show(`Pagamento concluído via ${paymentMethod}! Reserva confirmada.`); go('orders'); }} isDark={isDark} />}
       </AnimatePresence>
     </div>
   );
 }
 
 function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
+  const [step, setStep] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [d, setD] = useState(''); 
   const [t, setT] = useState('');
   
@@ -1414,7 +1421,11 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total {recurrence !== 'once' && `(por sessão)`}</span>
             <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {totalPrice.toFixed(2)}</span>
           </div>
-          <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
+          {step === 1 ? (
+             <button onClick={() => setStep(2)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Avançar para Pagamento</button>
+          ) : (
+             <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice, paymentMethod)} disabled={!paymentMethod} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar e Pagar</button>
+          )}
         </div>
       </motion.div>
     </>
@@ -1533,21 +1544,23 @@ function ChatDetailScreen({ user, isDark }: any) {
   const [text, setText] = useState('');
   const [proposing, setProposing] = useState(false);
   const [proposalPrice, setProposalPrice] = useState('');
+  const [proposalDate, setProposalDate] = useState('');
+  const [proposalTime, setProposalTime] = useState('');
   const [checkoutProposal, setCheckoutProposal] = useState<any>(null);
   const { add } = useAppointments(user?.id, user?.role);
   
   const chatMsgs = msgs.filter((m:any) => (m.senderId===user?.id && m.receiverId===partnerId) || (m.senderId===partnerId && m.receiverId===user?.id));
 
-  const handleSendProposal = (price: number) => {
+  const handleSendProposal = (price: number, date: string, time: string) => {
     if(partnerId) {
-      send(partnerId, `Proposta de Serviço: R$ ${price.toFixed(2)}`, 'proposal', { price, status: 'pending' });
+      send(partnerId, `Proposta de Serviço: R$ ${price.toFixed(2)} - ${date} às ${time}`, 'proposal', { price, date, time, status: 'pending' });
     }
   };
 
   const handleCounter = (msg: any, newPrice: number) => {
     if(partnerId) {
       updateMessage(msg.id, { 'proposal.status': 'countered' });
-      send(partnerId, `Contraproposta: R$ ${newPrice.toFixed(2)}`, 'proposal', { price: newPrice, status: 'pending' });
+      const d = msg.proposal.date || ''; const t = msg.proposal.time || ''; send(partnerId, `Contraproposta: R$ ${newPrice.toFixed(2)} - ${d} às ${t}`, 'proposal', { price: newPrice, date: d, time: t, status: 'pending' });
     }
   };
 
@@ -1559,38 +1572,18 @@ function ChatDetailScreen({ user, isDark }: any) {
     updateMessage(msg.id, { 'proposal.status': 'rejected' });
   };
   
-  const handlePaymentComplete = async () => {
+  const handlePaymentComplete = async (method: string) => {
     if(checkoutProposal) {
       try {
         const price = checkoutProposal.proposal.price;
-        const fee = price * 0.05;
-        
-        // Call our backend API to create a Stripe session
-        const res = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            proposalId: checkoutProposal.id,
-            serviceTitle: 'Serviço Personalizado',
-            price,
-            fee
-          })
-        });
-        
-        const data = await res.json();
-        if(data.url) {
-          // Update DB before redirecting (in a real app, use Webhooks)
-          await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: checkoutProposal.proposal.price, date: new Date().toISOString().split('T')[0], time: 'A Combinar', status: 'paid' });
-          await updateMessage(checkoutProposal.id, { 'proposal.status': 'paid' });
-          setCheckoutProposal(null);
-          
-          window.location.href = data.url; // Redirect to Stripe Checkout
-        } else {
-          alert('Erro ao criar sessão de pagamento: ' + (data.error || 'Desconhecido'));
-        }
+        // Mock successful payment
+        await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: price, date: checkoutProposal.proposal.date || new Date().toISOString().split('T')[0], time: checkoutProposal.proposal.time || 'A Combinar', status: 'approved', paymentMethod: method });
+        await updateMessage(checkoutProposal.id, { 'proposal.status': 'paid' });
+        setCheckoutProposal(null);
+        alert('Pagamento via ' + method + ' concluído com sucesso!');
       } catch (err) {
         console.error(err);
-        alert('Erro ao conectar com o provedor de pagamentos.');
+        alert('Erro ao concluir pagamento.');
       }
     }
   };
@@ -1655,11 +1648,17 @@ function ChatDetailScreen({ user, isDark }: any) {
       </div>
       
       {proposing && (
-        <div className={`p-3 border-t flex gap-2 items-center ${isDark?'bg-[#1e1e1e] border-[#3f3f46]':'bg-gray-50'}`}>
-           <Icon name="request_quote" className="text-gray-400" />
-           <input type="number" value={proposalPrice} onChange={e=>setProposalPrice(e.target.value)} placeholder="Valor da proposta..." className={`flex-1 rounded-lg px-3 py-2 outline-none text-sm border ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
-           <button onClick={()=>{if(proposalPrice) { handleSendProposal(Number(proposalPrice)); setProposing(false); setProposalPrice(''); }}} className="px-4 py-2 bg-[#f97316] text-black font-bold rounded-lg text-sm active:scale-95">Enviar</button>
-           <button onClick={()=>setProposing(false)} className="px-3 py-2 text-gray-400 font-bold text-sm">X</button>
+        <div className={`p-3 border-t flex flex-col gap-2 ${isDark?'bg-[#1e1e1e] border-[#3f3f46]':'bg-gray-50'}`}>
+           <div className="flex gap-2">
+             <input type="date" value={proposalDate} onChange={e=>setProposalDate(e.target.value)} className={`flex-1 rounded-lg px-3 py-2 outline-none text-sm border ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+             <input type="time" value={proposalTime} onChange={e=>setProposalTime(e.target.value)} className={`flex-1 rounded-lg px-3 py-2 outline-none text-sm border ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+           </div>
+           <div className="flex gap-2 items-center">
+             <Icon name="request_quote" className="text-gray-400" />
+             <input type="number" value={proposalPrice} onChange={e=>setProposalPrice(e.target.value)} placeholder="Valor (R$)" className={`flex-1 rounded-lg px-3 py-2 outline-none text-sm border ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+             <button onClick={()=>{if(proposalPrice && proposalDate && proposalTime) { handleSendProposal(Number(proposalPrice), proposalDate, proposalTime); setProposing(false); setProposalPrice(''); setProposalDate(''); setProposalTime(''); }}} className="px-4 py-2 bg-[#f97316] text-black font-bold rounded-lg text-sm active:scale-95">Enviar</button>
+             <button onClick={()=>setProposing(false)} className="px-3 py-2 text-gray-400 font-bold text-sm">X</button>
+           </div>
         </div>
       )}
 
@@ -1726,6 +1725,11 @@ function CheckoutModal({ p, onClose, onPay, isDark }: any) {
               <span className="font-bold flex-1 text-left">Cartão de Crédito</span>
               {method === 'credit' && <Icon name="check_circle" className="text-[#f97316]" />}
             </button>
+            <button onClick={()=>setMethod('debit')} className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${method === 'debit' ? 'border-[#f97316] bg-[#fff7ed] dark:bg-[#f97316]/10' : (isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-gray-200')}`}>
+              <Icon name="credit_score" className={method==='debit'?'text-[#f97316]':''} />
+              <span className="font-bold flex-1 text-left">Cartão de Débito</span>
+              {method === 'debit' && <Icon name="check_circle" className="text-[#f97316]" />}
+            </button>
           </div>
           
           <div className={`p-4 rounded-xl flex gap-3 ${isDark ? 'bg-[#27272a] text-[#a1a1aa]' : 'bg-gray-100 text-gray-600'}`}>
@@ -1735,7 +1739,7 @@ function CheckoutModal({ p, onClose, onPay, isDark }: any) {
         </div>
 
         <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
-          <button onClick={onPay} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">
+          <button onClick={() => onPay(method)} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">
             Pagar R$ {total.toFixed(2)}
           </button>
         </div>
