@@ -7,6 +7,7 @@ import { auth, db, googleProvider } from './firebase';
 import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { GlobalNotifications } from "./components/GlobalNotifications";
+import { Logo } from "./components/Logo";
 import { MapView } from "./components/MapView";
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
@@ -463,7 +464,7 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
         <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
           {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
         </div>
-        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <Logo isDark={isDark} hideSubtitle={true} />
         <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
@@ -558,7 +559,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
         <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
           {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
         </div>
-        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <Logo isDark={isDark} hideSubtitle={true} />
         <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
@@ -1072,7 +1073,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
         <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
           {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
         </div>
-        <h1 className={`font-black text-2xl tracking-tight ${isDark?'text-white':'text-[#002a5d]'}`}>EncontreAi</h1>
+        <Logo isDark={isDark} hideSubtitle={true} />
         <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
@@ -1429,7 +1430,7 @@ function AuthScreen({ loginWithEmail, registerWithEmail, isDark, show }: any) {
   return (
     <div className={`p-4 flex flex-col items-center justify-center min-h-screen relative ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
       <button onClick={() => navigate('/busca')} className="absolute top-6 left-4 p-2"><Icon name="arrow_back" /></button>
-      <h1 className={`text-4xl font-black mb-8 tracking-tight ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>EncontreAi</h1>
+      <Logo isDark={isDark} className="scale-125 origin-left mb-8" />
       
       <div className={`w-full max-w-sm rounded-3xl shadow-xl overflow-hidden ${isDark?'bg-[#27272a]':'bg-white'}`}>
         <div className="flex">
