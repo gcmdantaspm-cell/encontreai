@@ -300,7 +300,7 @@ function BottomBar({ isDark }: any) {
   const tabs = clientTabs; // As requested, always show Home, Buscar, Pedidos, Perfil
   
   return (
-    <div className={`w-full max-w-[448px] shrink-0 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 mb-[calc(-1*env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className={`w-full max-w-[448px] shrink-0 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
        {tabs.map(t => {
          const active = loc.pathname.startsWith(t.id);
          return (
@@ -339,7 +339,7 @@ function AppContent() {
      else navigate(routeMap[s] || `/${s}`);
   };
   
-  if (loading) return <div className={`min-h-screen flex items-center justify-center font-bold ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>Carregando EncontreAi...</div>;
+  if (loading) return <div className={`h-full flex items-center justify-center font-bold ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>Carregando EncontreAi...</div>;
   if (authError) return <div className={`min-h-screen flex items-center justify-center font-bold text-red-500 bg-[#18181b]`}>{authError}</div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
   
@@ -350,7 +350,7 @@ function AppContent() {
       <GlobalNotifications user={user} isDark={isDark} />
       <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
       <div className={`flex justify-center h-screen h-[100dvh] overflow-hidden ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
-        <div className={`w-full max-w-[448px] h-full relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+        <div className={`w-full max-w-[448px] h-full relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
           
           {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
             <header className={`w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
@@ -430,7 +430,7 @@ function OnboardingScreen({ updateRole, isDark }: any) {
     );
   
     return (
-      <div className={`p-6 flex flex-col min-h-screen pt-10 pb-20 max-w-[448px] mx-auto overflow-y-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
+      <div className={`p-6 flex flex-col h-full pt-10 pb-20 max-w-[448px] mx-auto overflow-y-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
          <button onClick={()=>setStep(1)} className="mb-6 self-start"><Icon name="arrow_back" /></button>
          <h1 className="text-3xl font-black mb-2">Seu Perfil Profissional</h1>
          <p className={`mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Precisamos de alguns dados adicionais para validar o seu perfil e passar segurança aos clientes.</p>
@@ -704,7 +704,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
   const isFav = user?.favorites?.includes(pro.id);
 
   return (
-    <div className={`min-h-screen pb-24 overflow-y-auto hide-scrollbar relative ${isDark?'bg-[#121212] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+    <div className={`h-full overflow-y-auto hide-scrollbar relative pb-24 ${isDark?'bg-[#121212] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
       <div className={`relative h-[240px] w-full ${isDark?'bg-gray-800':'bg-gray-300'}`}>
         <img src={pro.coverUrl || pro.avatarUrl} className="w-full h-full object-cover opacity-60" />
         <div className={`absolute inset-0 bg-gradient-to-b ${isDark?'from-black/60 via-black/20 to-[#121212]':'from-black/50 via-black/10 to-[#f8f9fa]'}`}></div>
@@ -1254,6 +1254,17 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
         )}
       </div>
       <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} userRole={user.role} />}</AnimatePresence>
+      <AnimatePresence>
+        {checkoutOrder && <CheckoutModal p={{ proposal: { price: checkoutOrder.price } }} onClose={()=>setCheckoutOrder(null)} onPay={async (method)=>{
+          await updateStatus(checkoutOrder.id, 'approved');
+          // Update the chat message as well if it exists
+          if (checkoutOrder.chatMsgId) {
+            updateDoc(doc(db, 'chats', checkoutOrder.chatMsgId), { 'proposal.status': 'paid' });
+          }
+          setCheckoutOrder(null);
+          if(show) show('Pagamento via ' + method + ' aprovado! Reserva confirmada e código gerado.');
+        }} isDark={isDark} />}
+      </AnimatePresence>
     </div>
   )
 }
@@ -1578,7 +1589,7 @@ function AuthScreen({ loginWithEmail, registerWithEmail, isDark, show }: any) {
   const [role, setRole] = useState('client');
 
   return (
-    <div className={`p-4 flex flex-col items-center justify-center min-h-screen relative ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
+    <div className={`p-4 flex flex-col items-center justify-center h-full relative ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-[#002a5d]'}`}>
       <button onClick={() => navigate('/busca')} className="absolute top-6 left-4 p-2"><Icon name="arrow_back" /></button>
       <Logo isDark={isDark} className="scale-125 origin-left mb-8" />
       
@@ -1715,7 +1726,7 @@ function ChatDetailScreen({ user, isDark }: any) {
   const handleAccept = async (msg: any) => {
     await updateMessage(msg.id, { 'proposal.status': 'accepted' });
     
-    const proId = msg.senderId === user.id ? partnerId : msg.senderId;
+    const proId = user.role === 'professional' ? user.id : partnerId;
     const clientId = user.role === 'client' ? user.id : partnerId;
     const clientName = user.role === 'client' ? user.name : 'Cliente';
     const price = msg.proposal.price;
@@ -1759,7 +1770,7 @@ function ChatDetailScreen({ user, isDark }: any) {
   };
 
   return (
-    <div className={`flex flex-col h-screen ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+    <div className={`flex flex-col h-full ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
       <header className={`border-b p-4 flex items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
         <button onClick={()=>navigate(-1)}><Icon name="arrow_back" /></button>
         <h2 className="font-bold">Conversa</h2>
