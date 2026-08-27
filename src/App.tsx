@@ -334,7 +334,7 @@ function AppContent() {
   if (authError) return <div className={`min-h-screen flex items-center justify-center font-bold text-red-500 bg-[#18181b]`}>{authError}</div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
   
-  const hideBottomNav = ['/login', '/cadastro'].includes(loc.pathname) || loc.pathname.startsWith('/servico/') || loc.pathname.startsWith('/chat');
+  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname) || loc.pathname.startsWith('/servico/') || loc.pathname.startsWith('/chat/');
   
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
@@ -469,12 +469,7 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
       {/* Header handled by global layout? No, global layout only provides container. We need Header. */}
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       
       <div className={`px-4 pt-2 pb-6 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
         <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
@@ -566,12 +561,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
 
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar flex-1 flex flex-col h-full">
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       
       <div className={`px-4 pt-2 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
         <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
@@ -806,12 +796,7 @@ function DashboardProScreen({ user, isDark, go }: any) {
 
   return (
     <div className="pb-24">
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       <div className="p-4">
        <h1 className="font-black text-2xl mb-2">Olá, {user.name.split(' ')[0]} 👋</h1>
        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda do dia.</p>
@@ -926,12 +911,7 @@ function MyServicesScreen({ user, isDark, show }: any) {
 
   return (
     <div className="pb-24">
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="font-black text-2xl">Meus Serviços</h1>
@@ -1110,12 +1090,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       
       <div className="px-4 mt-4">
         <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Pedidos'}</h1>
@@ -1518,15 +1493,10 @@ function ChatListScreen({ user, pros, isDark }: any) {
 
   return (
     <div className="pb-24">
-      <header className={`flex justify-center items-center px-4 pt-4 pb-2 relative ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <button onClick={() => window.dispatchEvent(new CustomEvent('open-sidebar'))} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
-          <Icon name="menu" size={24} />
-        </button>
-        <Logo isDark={isDark} hideSubtitle={true} />
-      </header>
+      
       <div className="p-4">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={()=>navigate(-1)}><Icon name="arrow_back" /></button>
+        
         <h1 className="font-black text-2xl">Mensagens</h1>
       </div>
       {chatPartners.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="forum" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhuma mensagem recente.</p></div>}
