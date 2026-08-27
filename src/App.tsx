@@ -343,7 +343,7 @@ function AppContent() {
   if (authError) return <div className={`min-h-screen flex items-center justify-center font-bold text-red-500 bg-[#18181b]`}>{authError}</div>;
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
   
-  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname) || loc.pathname.startsWith('/servico/') || loc.pathname.startsWith('/chat/');
+  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname);
   
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
@@ -1091,6 +1091,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
     }
   }, [show]);
   const [reviewModal, setReviewModal] = useState<any>(null);
+  const [checkoutOrder, setCheckoutOrder] = useState<any>(null);
 
   const submitReview = async (rating: number, text: string) => {
     if (user.role === 'professional') {
@@ -1130,7 +1131,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   };
 
   if (!user) return null;
-  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
+  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending' || a.status === 'pending_payment')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
@@ -1151,6 +1152,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
              {filtered.map(a => {
                const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
                  pending: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
+                 pending_payment: { label: 'Aguardando Pagamento', border: '#eab308', badgeBg: isDark ? '#fef08a' : '#fef08a', badgeText: '#854d0e' },
                  approved: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
                  completed: { label: user.role === 'professional' ? 'Pagamento recebido' : 'Concluído', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
                  cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#fee2e2' : '#fee2e2', badgeText: '#991b1b' }
@@ -1231,6 +1233,9 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                      <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Cliente</button>
                    )}
                    {/* Client Controls */}
+                   {user.role === 'client' && a.status === 'pending_payment' && (
+                     <button onClick={()=>setCheckoutOrder(a)} className="w-full mt-2 py-2 bg-green-500 text-white rounded-lg text-xs font-black active:scale-95 shadow-md flex items-center justify-center gap-2"><Icon name="payments" size={16} /> Pagar Agora</button>
+                   )}
                    {user.role === 'client' && a.status === 'approved' && (
                      <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                        <p className="text-xs text-center font-bold text-blue-600 dark:text-blue-400">Código de Liberação</p>
@@ -1707,8 +1712,30 @@ function ChatDetailScreen({ user, isDark }: any) {
     }
   };
 
-  const handleAccept = (msg: any) => {
-    updateMessage(msg.id, { 'proposal.status': 'accepted' });
+  const handleAccept = async (msg: any) => {
+    await updateMessage(msg.id, { 'proposal.status': 'accepted' });
+    
+    const proId = msg.senderId === user.id ? partnerId : msg.senderId;
+    const clientId = user.role === 'client' ? user.id : partnerId;
+    const clientName = user.role === 'client' ? user.name : 'Cliente';
+    const price = msg.proposal.price;
+    const date = msg.proposal.date || new Date().toISOString().split('T')[0];
+    const time = msg.proposal.time || 'A Combinar';
+    
+    await add({ 
+      professionalId: proId, 
+      clientId: clientId, 
+      clientName: clientName, 
+      serviceId: 'custom', 
+      serviceTitle: 'Serviço Personalizado', 
+      price: price, 
+      date: date, 
+      time: time, 
+      status: 'pending_payment', 
+      paymentMethod: '',
+      chatMsgId: msg.id
+    });
+    alert('Proposta aceita! O pedido foi gerado em Meus Pedidos para pagamento.');
   };
 
   const handleReject = (msg: any) => {
@@ -1770,7 +1797,7 @@ function ChatDetailScreen({ user, isDark }: any) {
   <div className="flex flex-col gap-2">
     <span className="text-xs font-bold text-green-500 flex items-center gap-1"><Icon name="check_circle" size={14}/> Acordo Fechado</span>
     {user?.role === 'client' ? (
-      <button onClick={()=>setCheckoutProposal(m)} className="w-full mt-2 py-2 bg-green-500 text-white font-black rounded-lg text-sm shadow-md active:scale-95 transition-transform">Pagar Agora</button>
+      <button onClick={() => navigate('/pedidos')} className="w-full mt-2 py-2 bg-green-500 text-white font-black rounded-lg text-sm shadow-md active:scale-95 transition-transform">Ir para Pedidos Pagar</button>
     ) : (
       <span className="text-xs font-bold text-orange-500 flex items-center gap-1"><Icon name="hourglass_empty" size={14}/> Pagamento pendente</span>
     )}
