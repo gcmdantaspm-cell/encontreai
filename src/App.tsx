@@ -109,18 +109,23 @@ function useAuth() {
 function useSearch() {
   const [pros, setPros] = useState<Professional[]>([]);
   useEffect(() => {
-    getDocs(query(collection(db, 'users'), where('role', '==', 'professional'))).then(snap => {
-      const dbPros = snap.docs.map(d => {
+    const fetchPros = async () => {
+      const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'professional')));
+      const dbPros = await Promise.all(snap.docs.map(async (d) => {
         const u = d.data();
+        const svcSnap = await getDocs(query(collection(db, 'services'), where('professionalId', '==', d.id)));
+        const services = svcSnap.docs.map(sd => ({ ...sd.data(), id: sd.id } as ProfService));
+        
         return {
           id: d.id, name: u.name, profession: u.profession || 'Especialista',
           avatarUrl: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.avatarInitial}&background=random`,
           coverUrl: u.coverUrl || `https://picsum.photos/seed/${d.id}/600/300`,
-          rating: u.rating || 5.0, verified: true, services: [], description: u.description
+          rating: u.rating || 5.0, verified: true, services, description: u.description
         } as Professional;
-      });
+      }));
       setPros([...PROFESSIONALS, ...dbPros]);
-    });
+    };
+    fetchPros();
   }, []);
   return { pros };
 }
@@ -1288,6 +1293,11 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
       </div>
       <div className={`fixed bottom-0 w-full max-w-[448px] p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
         <div className="flex gap-2 pointer-events-auto">
+          {user?.role === 'client' && (
+             <button onClick={() => go('chat-detail', { id: pro.id })} className="w-14 h-14 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center shadow-lg border border-gray-200 dark:border-[#3f3f46] text-[#f97316]">
+                <Icon name="chat" size={28} />
+             </button>
+          )}
           <button onClick={() => { if(!user) go('auth'); else go('chat-detail', {id: pro.id, name: pro.name}); }} className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46] text-[#60a5fa]':'bg-white border-[#e5e7eb] text-[#002a5d]'}`}><Icon name="chat" size={24} /></button>
           <button onClick={() => { if(!user) go('auth'); else if (services.length > 0) setBookModal(services[0]); }} className="flex-1 rounded-2xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">Agendar Principal</button>
         </div>
@@ -1575,6 +1585,35 @@ function ChatListScreen({ user, pros, isDark }: any) {
   const navigate = useNavigate();
   const { msgs } = useChat(user?.id);
   const chatPartners = Array.from(new Set(msgs.map((m:any) => m.senderId === user?.id ? m.receiverId : m.senderId)));
+  const [partnerNames, setPartnerNames] = useState<any>({});
+
+  useEffect(() => {
+    const fetchNames = async () => {
+      const newNames = { ...partnerNames };
+      for (const pid of chatPartners) {
+        if (!newNames[pid as string]) {
+          const pro = pros.find((p:any) => p.id === pid);
+          if (pro) {
+             newNames[pid as string] = pro.name;
+          } else {
+             try {
+               const docSnap = await getDoc(doc(db, 'users', pid as string));
+               if (docSnap.exists()) {
+                 newNames[pid as string] = docSnap.data().name;
+               } else {
+                 newNames[pid as string] = 'Usuário';
+               }
+             } catch {
+                 newNames[pid as string] = 'Usuário';
+             }
+          }
+        }
+      }
+      setPartnerNames(newNames);
+    };
+    if (chatPartners.length > 0) fetchNames();
+  }, [chatPartners.length, pros]);
+
 
   return (
     <div className="pb-24">
@@ -1588,7 +1627,7 @@ function ChatListScreen({ user, pros, isDark }: any) {
       <div className="flex flex-col gap-2">
         {chatPartners.map((pid:any) => {
           const lastMsg = msgs.filter((m:any) => m.participants.includes(pid)).pop();
-          const partnerName = pros.find((p:any) => p.id === pid)?.name || 'Cliente';
+          const partnerName = partnerNames[pid as string] || 'Carregando...';
           return (
             <button key={pid} onClick={()=>navigate(`/chat/${pid}`)} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
               <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-black shrink-0"><Icon name="person" /></div>
