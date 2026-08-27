@@ -6,6 +6,8 @@ import { Professional, UserRole, AppUser, ProfService, Appointment, Review, Chat
 import { auth, db, googleProvider } from './firebase';
 import { signInWithPopup, signOut as fbSignOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { GlobalNotifications } from "./components/GlobalNotifications";
+import { MapView } from "./components/MapView";
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
 function Icon({ name, fill, size, className, ...rest }: { name: string; fill?: boolean; size?: number; className?: string; [x: string]: any }) {
@@ -208,11 +210,11 @@ function useChat(uid?: string) {
     });
     return unsub;
   }, [uid]);
-  const send = async (receiverId: string, text: string) => {
+  const send = async (receiverId: string, text: string, type: 'text'|'proposal' = 'text', proposal?: any) => {
     if(!uid) return;
-    await addDoc(collection(db, 'chats'), { senderId: uid, receiverId, text, participants: [uid, receiverId], createdAt: new Date().toISOString() });
+    await addDoc(collection(db, 'chats'), { senderId: uid, receiverId, text, participants: [uid, receiverId], createdAt: new Date().toISOString(), type, proposal });
   };
-  return { msgs, send };
+  const updateMessage = async (msgId: string, updates: any) => { await updateDoc(doc(db, 'chats', msgId), updates); }; return { msgs, send, updateMessage };
 }
 
 function useReviews(pid?: string) {
@@ -301,8 +303,8 @@ function AppContent() {
   const { isDark, toggle: toggleDarkMode } = useDarkMode();
   const { t, show } = useToast();
   
-  const [currentRole, setCurrentRole] = useState(user?.role || 'client');
-  useEffect(() => { if (user?.role) setCurrentRole(user.role); }, [user]);
+  const [currentRole, setCurrentRole] = useState(user?.currentMode || user?.role || 'client');
+  useEffect(() => { if (user) setCurrentRole(user.currentMode || user.role); }, [user?.currentMode, user?.role]);
   
   const navigate = useNavigate();
   const loc = useLocation();
@@ -323,6 +325,7 @@ function AppContent() {
   
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
+      <GlobalNotifications user={user} isDark={isDark} />
       <div className={`flex justify-center min-h-screen ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
         <div className={`w-full max-w-[448px] min-h-screen relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
           
@@ -534,6 +537,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   const [q, setQ] = useState(loc.state?.q || loc.state?.category || '');
   const [filter, setFilter] = useState('all');
   const [bookingService, setBookingService] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'list'|'map'>('list');
   
   const allServices = useMemo(() => {
     return pros.flatMap((p:any) => (p.services || []).map((s:any) => ({ ...s, pro: p })));
@@ -549,7 +553,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
   else if (filter === 'rate') { filtered.sort((a:any, b:any) => b.pro.rating - a.pro.rating); }
 
   return (
-    <div className="pb-8 overflow-y-auto hide-scrollbar">
+    <div className="pb-8 overflow-y-auto hide-scrollbar flex-1 flex flex-col h-full">
       <header className={`flex justify-between items-center px-4 pt-4 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
         <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
           {user?.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" className="opacity-50" />}
@@ -558,7 +562,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
         <button className="w-10 h-10 rounded-full flex items-center justify-center"><Icon name="notifications_none" /></button>
       </header>
       
-      <div className={`px-4 pt-2 pb-4 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
+      <div className={`px-4 pt-2 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
         <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
           <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="O que você precisa hoje?" className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" />
@@ -568,58 +572,73 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
         </div>
       </div>
       
-      <div className="px-4">
-        <div className="flex justify-between items-center mb-4">
-           <h2 className="font-black text-lg">Serviços em Destaque</h2>
-           <div className="flex gap-2">
-             <button onClick={()=>setFilter('price')} className={`px-3 py-1.5 rounded-full font-bold text-xs border active:scale-95 transition-transform ${filter==='price' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#f8f9fa] text-black border-[#002a5d]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-               Menor Preço
-             </button>
-             <button onClick={()=>setFilter('rate')} className={`px-3 py-1.5 rounded-full font-bold text-xs border flex items-center gap-1 active:scale-95 transition-transform ${filter==='rate' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#e0e7ff] text-[#3730a3] border-[#3730a3]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
-               <Icon name="star" size={14} /> Top
-             </button>
-           </div>
+      {/* TOGGLE VIEW */}
+      <div className="px-4 py-2 mb-2 flex justify-center">
+        <div className={`flex rounded-xl p-1 relative w-[240px] shadow-sm border ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-gray-100 border-[#e5e7eb]'}`}>
+           <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#f97316] rounded-lg shadow-md transition-all duration-300 ${viewMode === 'list' ? 'left-1' : 'left-[calc(50%+2px)]'}`} />
+           <button onClick={() => setViewMode('list')} className={`flex-1 py-2 text-sm font-bold relative z-10 transition-colors flex items-center justify-center gap-1 ${viewMode === 'list' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}><Icon name="format_list_bulleted" size={16}/> Lista</button>
+           <button onClick={() => setViewMode('map')} className={`flex-1 py-2 text-sm font-bold relative z-10 transition-colors flex items-center justify-center gap-1 ${viewMode === 'map' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}><Icon name="map" size={16}/> Mapa</button>
         </div>
-        
-        {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
+      </div>
 
-        <div className="flex flex-col gap-3">
-          {filtered.map((s:any) => {
-            const isFav = user?.favorites?.includes(s.pro.id);
-            return (
-              <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-                <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
-                   <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
-                   <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
-                     <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
-                   </button>
-                </div>
-                
-                <div className="flex flex-col flex-1 h-[100px] justify-between py-0.5">
-                   <div>
-                      <h3 className={`font-bold text-[15px] leading-tight mb-1 line-clamp-1 ${isDark?'text-white':'text-[#002a5d]'}`}>{s.title}</h3>
-                      <Link to={`/servico/${s.id}`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
-                         <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
-                            <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
-                         </div>
-                         <span className={`text-xs font-medium ${isDark?'text-gray-300':'text-gray-700'}`}>{s.pro.name}</span>
-                         <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
-                            <Icon name="star" size={12} fill /> {s.pro.rating.toFixed(1)}
-                         </div>
-                      </Link>
-                   </div>
+      <div className={`flex-1 ${viewMode === 'map' ? 'h-[400px] sm:h-[500px]' : ''}`}>
+        {viewMode === 'map' ? (
+          <MapView pros={pros} isDark={isDark} />
+        ) : (
+          <div className="px-4">
+            <div className="flex justify-between items-center mb-4">
+               <h2 className="font-black text-lg">Serviços em Destaque</h2>
+               <div className="flex gap-2">
+                 <button onClick={()=>setFilter('price')} className={`px-3 py-1.5 rounded-full font-bold text-xs border active:scale-95 transition-transform ${filter==='price' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#f8f9fa] text-black border-[#002a5d]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+                   Menor Preço
+                 </button>
+                 <button onClick={()=>setFilter('rate')} className={`px-3 py-1.5 rounded-full font-bold text-xs border flex items-center gap-1 active:scale-95 transition-transform ${filter==='rate' ? (isDark?'bg-[#27272a] text-white border-white':'bg-[#e0e7ff] text-[#3730a3] border-[#3730a3]') : (isDark?'bg-transparent border-[#3f3f46] text-gray-300':'bg-white border-[#e5e7eb] text-gray-700')}`}>
+                   <Icon name="star" size={14} /> Top
+                 </button>
+               </div>
+            </div>
+            
+            {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
 
-                   <div className="flex justify-between items-end mt-auto">
-                      <span className={`font-black text-sm whitespace-nowrap ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
-                      <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService(s); }} className="px-3 py-1.5 bg-[#f97316] text-black font-black text-[11px] rounded-lg active:scale-95 transition-transform shadow-md">
-                        Agendar
-                      </button>
-                   </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+            <div className="flex flex-col gap-3 pb-4">
+              {filtered.map((s:any) => {
+                const isFav = user?.favorites?.includes(s.pro.id);
+                return (
+                  <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                    <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
+                       <img src={s.imageUrls?.[0] || s.imageUrl || s.pro.avatarUrl} className="w-full h-full object-cover" />
+                       <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
+                         <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
+                       </button>
+                    </div>
+                    
+                    <div className="flex flex-col flex-1 h-[100px] justify-between py-0.5">
+                       <div>
+                          <h3 className={`font-bold text-[15px] leading-tight mb-1 line-clamp-1 ${isDark?'text-white':'text-[#002a5d]'}`}>{s.title}</h3>
+                          <Link to={`/servico/${s.id}`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
+                             <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                                <img src={s.pro.avatarUrl} className="w-full h-full object-cover" />
+                             </div>
+                             <span className={`text-xs font-medium ${isDark?'text-gray-300':'text-gray-700'}`}>{s.pro.name}</span>
+                             <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
+                                <Icon name="star" size={12} fill /> {s.pro.rating.toFixed(1)}
+                             </div>
+                          </Link>
+                       </div>
+
+                       <div className="flex justify-between items-end mt-auto">
+                          <span className={`font-black text-sm whitespace-nowrap ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
+                          <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService(s); }} className="px-3 py-1.5 bg-[#f97316] text-black font-black text-[11px] rounded-lg active:scale-95 transition-transform shadow-md">
+                            Agendar
+                          </button>
+                       </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
       
       <AnimatePresence>
@@ -628,8 +647,8 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
              proId={bookingService.pro.id} 
              svc={bookingService} 
              onClose={()=>setBookingService(null)} 
-             onBook={async(d:any,t:any)=>{
-                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: bookingService.price, createdAt: new Date().toISOString() });
+             onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
                 setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
              }} 
              isDark={isDark} 
@@ -742,8 +761,8 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
             proId={pro.id} 
             svc={bookingService} 
             onClose={()=>setBookingService(null)} 
-            onBook={async(d:any,t:any)=>{
-              await addDoc(collection(db, 'appointments'), { professionalId: pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: bookingService.price, createdAt: new Date().toISOString() });
+            onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
               setBookingService(null); show('Agendamento solicitado!'); navigate('/pedidos');
             }} 
             isDark={isDark} 
@@ -768,6 +787,34 @@ function DashboardProScreen({ user, isDark, go }: any) {
          <h2 className={`font-black text-4xl mb-4 ${isDark?'text-[#f97316]':'text-[#f97316]'}`}>R$ {earned.toFixed(2)}</h2>
          <div className="w-full h-[1px] bg-white/10 mb-4" />
          <div className="flex justify-between w-full px-4"><div><p className="text-xs opacity-70">Pendentes</p><p className="font-bold text-lg">{pending.length}</p></div><div><p className="text-xs opacity-70">Concluídos</p><p className="font-bold text-lg">{apts.filter(a=>a.status==='completed').length}</p></div></div>
+       </div>
+       
+       <div className={`p-5 rounded-3xl mb-8 border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+         <div className="flex justify-between items-end mb-2">
+           <h3 className="font-black text-lg">Perfil Campeão</h3>
+           <span className="font-bold text-[#f97316]">70%</span>
+         </div>
+         <div className="w-full h-3 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 mb-4">
+           <div className="h-full bg-[#f97316] rounded-full" style={{width: '70%'}}></div>
+         </div>
+         <p className={`text-xs mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Complete seu perfil para atrair mais clientes e ganhar o selo de verificação.</p>
+         
+         <div className="flex flex-col gap-3">
+           <button onClick={()=>go('my-services')} className={`p-3 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
+             <div>
+               <p className="font-bold text-sm mb-0.5">Adicionar mais fotos</p>
+               <p className={`text-[10px] ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Serviços com fotos vendem 3x mais.</p>
+             </div>
+             <Icon name="chevron_right" />
+           </button>
+           <button onClick={()=>go('profile')} className={`p-3 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#18181b] border-[#3f3f46]':'bg-[#f8f9fa] border-[#e5e7eb]'}`}>
+             <div>
+               <p className="font-bold text-sm mb-0.5">Verificar Identidade</p>
+               <p className={`text-[10px] ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Ganhe um selo de segurança.</p>
+             </div>
+             <Icon name="chevron_right" />
+           </button>
+         </div>
        </div>
        <h3 className="font-black text-lg mb-4 flex items-center gap-2"><Icon name="calendar_today" size={20}/> Agenda Pendente</h3>
        <div className="flex flex-col gap-4">
@@ -968,9 +1015,35 @@ function MyServicesScreen({ user, isDark, show }: any) {
 function OrdersScreen({ user, pros, go, isDark, show }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const [filter, setFilter] = useState('all');
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('payment') === 'success') {
+       if(show) show('Pagamento confirmado com sucesso! Dinheiro retido.');
+       // Clean up URL
+       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [show]);
   const [reviewModal, setReviewModal] = useState<any>(null);
 
   const submitReview = async (rating: number, text: string) => {
+    if (user.role === 'professional') {
+      await addDoc(collection(db, 'reviews'), {
+        professionalId: user.id, clientId: reviewModal.clientId, professionalName: user.name, rating, text, createdAt: new Date().toISOString(), type: 'pro_to_client'
+      });
+      await updateDoc(doc(db, 'appointments', reviewModal.id), { proReviewed: true });
+      const clientRef = doc(db, 'users', reviewModal.clientId);
+      const clientSnap = await getDoc(clientRef);
+      if(clientSnap.exists()) {
+        const data = clientSnap.data();
+        const currentRating = data.rating || 5; const count = data.reviewsCount || 0;
+        const newCount = count + 1; const newRating = ((currentRating * count) + rating) / newCount;
+        await updateDoc(clientRef, { rating: newRating, reviewsCount: newCount });
+      }
+      setReviewModal(null);
+      show('Avaliação enviada ao cliente!');
+      return;
+    }
     await addDoc(collection(db, 'reviews'), {
       professionalId: reviewModal.professionalId, clientId: user.id, clientName: user.name, rating, text, createdAt: new Date().toISOString()
     });
@@ -1069,9 +1142,12 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                      </div>
                    )}
                    
+                   {user.role === 'professional' && a.status === 'completed' && !a.proReviewed && (
+                     <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Cliente</button>
+                   )}
                    {/* Client Controls */}
                    {user.role === 'client' && a.status === 'completed' && !a.reviewed && (
-                     <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Avaliar Serviço</button>
+                     <button onClick={()=>setReviewModal(a)} className="w-full mt-2 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">{user.role === 'professional' ? 'Avaliar Cliente' : 'Avaliar Serviço'}</button>
                    )}
                  </div>
                )
@@ -1079,7 +1155,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
           </div>
         )}
       </div>
-      <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} />}</AnimatePresence>
+      <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} userRole={user.role} />}</AnimatePresence>
     </div>
   )
 }
@@ -1100,7 +1176,7 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
       <div className="flex-1 overflow-y-auto pb-32">
         <div className="relative w-full h-80"><img src={pro.coverUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full object-cover" /><div className={`absolute inset-0 bg-gradient-to-t ${isDark ? 'from-[#18181b] to-transparent' : 'from-[#f8f9fa] to-transparent'}`} /></div>
         <div className="px-4 -mt-10 relative z-10">
-          <h2 className="font-black text-2xl leading-tight mb-1">{pro.name}</h2>
+          <h2 className="font-black text-2xl leading-tight mb-1 flex items-center gap-2">{pro.name}{pro.verified && <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-green-500 bg-green-50 dark:bg-green-500/10 px-2 py-0.5 rounded-full"><Icon name="verified_user" size={14} fill/> Verificado</span>}</h2>
           <p className={`text-base font-semibold ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
           
           <div className="flex items-center gap-4 mt-3 mb-6">
@@ -1176,6 +1252,17 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
   const [d, setD] = useState(''); 
   const [t, setT] = useState('');
   
+  // Phase 2: Add-ons & Recurrence
+  const MOCK_ADDONS = [
+    { id: 'a1', name: 'Atendimento Expresso', price: 20 },
+    { id: 'a2', name: 'Garantia Estendida', price: 15 },
+    { id: 'a3', name: 'Produto Ecológico', price: 10 }
+  ];
+  const addons = svc.addons || MOCK_ADDONS;
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  
+  const [recurrence, setRecurrence] = useState<'once'|'weekly'|'biweekly'>('once');
+  
   const occupiedTimes = useProviderSchedule(proId, d);
   
   const dayOfWeek = d ? new Date(d + 'T00:00:00').getDay() : -1;
@@ -1194,10 +1281,17 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
   };
 
   const nextDays = getNextDays();
+  
+  const toggleAddon = (id: string) => {
+    setSelectedAddons(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  
+  const addonTotal = addons.filter((a:any) => selectedAddons.includes(a.id)).reduce((acc:number, a:any) => acc + a.price, 0);
+  const totalPrice = svc.price + addonTotal;
 
   return (
     <>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-[#f8f9fa] dark:bg-[#121212] z-[100] overflow-y-auto hide-scrollbar pb-28">
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-[#f8f9fa] dark:bg-[#121212] z-[100] overflow-y-auto hide-scrollbar pb-36">
         
         <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
           <button onClick={onClose} className="p-2"><Icon name="arrow_back" className="text-[#002a5d] dark:text-white" /></button>
@@ -1242,9 +1336,9 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
 
           <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Horários Disponíveis</h2>
           {!d ? (
-            <p className="text-sm text-gray-500 font-medium">Selecione uma data para ver os horários.</p>
+            <p className="text-sm text-gray-500 font-medium mb-6">Selecione uma data para ver os horários.</p>
           ) : !isDayAvailable ? (
-            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold text-center">
+            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold text-center mb-6">
               O profissional não atende neste dia.
             </div>
           ) : (
@@ -1265,28 +1359,55 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
               })}
             </div>
           )}
+          
+          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Serviços Adicionais (Modulares)</h2>
+          <div className="flex flex-col gap-3 mb-6">
+            {addons.map((a:any) => {
+              const isSelected = selectedAddons.includes(a.id);
+              return (
+                <label key={a.id} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'}`}>
+                      {isSelected && <Icon name="check" size={16} />}
+                    </div>
+                    <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{a.name}</span>
+                  </div>
+                  <span className="font-black text-sm text-[#002a5d] dark:text-[#60a5fa]">+ R$ {a.price.toFixed(2)}</span>
+                  <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAddon(a.id)} />
+                </label>
+              );
+            })}
+          </div>
+
+          <h2 className="font-bold text-lg mb-3 text-gray-900 dark:text-white">Tornar este agendamento recorrente?</h2>
+          <div className="flex bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#2a2a2a] rounded-xl overflow-hidden mb-6">
+            <button onClick={() => setRecurrence('once')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'once' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Única vez</button>
+            <button onClick={() => setRecurrence('weekly')} className={`flex-1 py-3 text-xs font-bold transition-colors border-x border-gray-200 dark:border-[#2a2a2a] ${recurrence === 'weekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Semanal</button>
+            <button onClick={() => setRecurrence('biweekly')} className={`flex-1 py-3 text-xs font-bold transition-colors ${recurrence === 'biweekly' ? 'bg-[#3730a3] text-white' : 'text-gray-500 dark:text-gray-400'}`}>Quinzenal</button>
+          </div>
+
         </div>
         
         <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Valor da Visita</span>
-            <span className="font-black text-lg text-[#002a5d] dark:text-[#60a5fa]">R$ {svc.price.toFixed(2)}</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total {recurrence !== 'once' && `(por sessão)`}</span>
+            <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {totalPrice.toFixed(2)}</span>
           </div>
-          <button onClick={() => onBook(d,t)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
+          <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
         </div>
       </motion.div>
     </>
   )
 }
 
-function ReviewModal({ a, onClose, onSubmit, isDark }: any) {
+function ReviewModal({ a, onClose, onSubmit, isDark, userRole }: any) {
   const [r, setR] = useState(5); const [t, setT] = useState('');
   return (
     <>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
       <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
         <h2 className="font-bold text-2xl mb-1">Avaliar Serviço</h2>
-        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Como foi o serviço de {a.professionalName}?</p>
+        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{userRole === 'professional' ? `Como foi o cliente ${a.clientName}?` : `Como foi o serviço de ${a.professionalName}?`}</p>
         <div className="flex justify-center gap-3 mb-8">
           {[1,2,3,4,5].map(i => <button key={i} onClick={()=>setR(i)} className="active:scale-90 transition-transform"><Icon name="star" fill={i<=r} size={48} className={i<=r ? 'text-[#f97316]' : (isDark?'text-[#3f3f46]':'text-gray-300')} /></button>)}
         </div>
@@ -1384,9 +1505,71 @@ function ChatListScreen({ user, pros, isDark }: any) {
 function ChatDetailScreen({ user, isDark }: any) {
   const navigate = useNavigate();
   const { id: partnerId } = useParams();
-  const { msgs, send } = useChat(user?.id);
+  const { msgs, send, updateMessage } = useChat(user?.id);
   const [text, setText] = useState('');
+  const [proposing, setProposing] = useState(false);
+  const [proposalPrice, setProposalPrice] = useState('');
+  const [checkoutProposal, setCheckoutProposal] = useState<any>(null);
+  const { add } = useAppointments(user?.id, user?.role);
+  
   const chatMsgs = msgs.filter((m:any) => (m.senderId===user?.id && m.receiverId===partnerId) || (m.senderId===partnerId && m.receiverId===user?.id));
+
+  const handleSendProposal = (price: number) => {
+    if(partnerId) {
+      send(partnerId, `Proposta de Serviço: R$ ${price.toFixed(2)}`, 'proposal', { price, status: 'pending' });
+    }
+  };
+
+  const handleCounter = (msg: any, newPrice: number) => {
+    if(partnerId) {
+      updateMessage(msg.id, { 'proposal.status': 'countered' });
+      send(partnerId, `Contraproposta: R$ ${newPrice.toFixed(2)}`, 'proposal', { price: newPrice, status: 'pending' });
+    }
+  };
+
+  const handleAccept = (msg: any) => {
+    updateMessage(msg.id, { 'proposal.status': 'accepted' });
+  };
+
+  const handleReject = (msg: any) => {
+    updateMessage(msg.id, { 'proposal.status': 'rejected' });
+  };
+  
+  const handlePaymentComplete = async () => {
+    if(checkoutProposal) {
+      try {
+        const price = checkoutProposal.proposal.price;
+        const fee = price * 0.05;
+        
+        // Call our backend API to create a Stripe session
+        const res = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proposalId: checkoutProposal.id,
+            serviceTitle: 'Serviço Personalizado',
+            price,
+            fee
+          })
+        });
+        
+        const data = await res.json();
+        if(data.url) {
+          // Update DB before redirecting (in a real app, use Webhooks)
+          await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: checkoutProposal.proposal.price, date: new Date().toISOString().split('T')[0], time: 'A Combinar', status: 'paid' });
+          await updateMessage(checkoutProposal.id, { 'proposal.status': 'paid' });
+          setCheckoutProposal(null);
+          
+          window.location.href = data.url; // Redirect to Stripe Checkout
+        } else {
+          alert('Erro ao criar sessão de pagamento: ' + (data.error || 'Desconhecido'));
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao conectar com o provedor de pagamentos.');
+      }
+    }
+  };
 
   return (
     <div className={`flex flex-col h-screen ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
@@ -1395,126 +1578,248 @@ function ChatDetailScreen({ user, isDark }: any) {
         <h2 className="font-bold">Conversa</h2>
       </header>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {chatMsgs.map((m:any) => (
-          <div key={m.id} className={`max-w-[80%] rounded-xl p-3 text-sm ${m.senderId === user?.id ? 'bg-[#f97316] text-black self-end rounded-br-sm' : (isDark?'bg-[#3f3f46] text-white':'bg-[#e1e3e4] text-[#191c1d]') + ' self-start rounded-bl-sm'}`}>{m.text}</div>
-        ))}
+        {chatMsgs.map((m:any) => {
+          const isMine = m.senderId === user?.id;
+          if (m.type === 'proposal' && m.proposal) {
+             const p = m.proposal;
+             return (
+               <div key={m.id} className={`w-full max-w-[280px] rounded-2xl p-4 shadow-sm border ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'} ${isMine ? 'self-end' : 'self-start'}`}>
+                 <div className="flex justify-between items-center mb-2">
+                   <h3 className="font-bold text-sm">Proposta de Serviço</h3>
+                   <Icon name="request_quote" className="text-[#f97316]" size={18} />
+                 </div>
+                 <p className={`text-2xl font-black mb-3 ${isDark?'text-white':'text-black'}`}>R$ {p.price.toFixed(2)}</p>
+                 
+                 {p.status === 'pending' && (
+                   <div className="flex flex-col gap-2">
+                     {!isMine ? (
+                       <>
+                         <button onClick={()=>handleAccept(m)} className="w-full py-2 bg-[#f97316] text-black font-bold rounded-lg text-sm active:scale-95 transition-transform">Aceitar Acordo</button>
+                         <button onClick={()=>{
+                           const cp = prompt('Digite o valor da contraproposta:');
+                           if(cp && !isNaN(Number(cp))) handleCounter(m, Number(cp));
+                         }} className={`w-full py-2 border font-bold rounded-lg text-sm active:scale-95 transition-transform ${isDark?'border-[#3f3f46] text-white':'border-gray-300 text-black'}`}>Fazer Contraproposta</button>
+                         <button onClick={()=>handleReject(m)} className="w-full py-2 bg-red-50 text-red-500 dark:bg-red-500/10 font-bold rounded-lg text-sm active:scale-95 transition-transform">Recusar</button>
+                       </>
+                     ) : (
+                       <p className="text-xs text-orange-500 font-bold">Aguardando resposta...</p>
+                     )}
+                   </div>
+                 )}
+                 {p.status === 'accepted' && (
+                   <div className="flex flex-col gap-2">
+                     <span className="text-xs font-bold text-green-500 flex items-center gap-1"><Icon name="check_circle" size={14}/> Acordo Fechado</span>
+                     {(!isMine || user?.role === 'client') && (
+                       <button onClick={()=>setCheckoutProposal(m)} className="w-full mt-2 py-2 bg-green-500 text-white font-black rounded-lg text-sm shadow-md active:scale-95 transition-transform">Pagar Agora</button>
+                     )}
+                   </div>
+                 )}
+                 {p.status === 'paid' && (
+                   <div className="flex flex-col gap-2 mt-2">
+                     <span className="text-xs font-bold text-blue-500 flex items-center gap-1"><Icon name="verified_user" size={14}/> Pago (Valor Retido)</span>
+                   </div>
+                 )}
+                 {p.status === 'rejected' && <span className="text-xs font-bold text-red-500">Proposta Recusada</span>}
+                 {p.status === 'countered' && <span className="text-xs font-bold text-gray-500">Contraproposta enviada</span>}
+               </div>
+             );
+          }
+          return (
+            <div key={m.id} className={`max-w-[80%] rounded-xl p-3 text-sm ${isMine ? 'bg-[#f97316] text-black self-end rounded-br-sm' : (isDark?'bg-[#3f3f46] text-white':'bg-[#e1e3e4] text-[#191c1d]') + ' self-start rounded-bl-sm'}`}>{m.text}</div>
+          );
+        })}
       </div>
-      <div className={`p-4 border-t flex gap-2 pb-8 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
-        <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&text&&partnerId){send(partnerId,text);setText('');}}} placeholder="Mensagem..." className={`flex-1 border rounded-full px-4 py-3 outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
-        <button onClick={()=>{if(text&&partnerId){send(partnerId,text);setText('');}}} className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black"><Icon name="send" size={20} /></button>
+      
+      {proposing && (
+        <div className={`p-3 border-t flex gap-2 items-center ${isDark?'bg-[#1e1e1e] border-[#3f3f46]':'bg-gray-50'}`}>
+           <Icon name="request_quote" className="text-gray-400" />
+           <input type="number" value={proposalPrice} onChange={e=>setProposalPrice(e.target.value)} placeholder="Valor da proposta..." className={`flex-1 rounded-lg px-3 py-2 outline-none text-sm border ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+           <button onClick={()=>{if(proposalPrice) { handleSendProposal(Number(proposalPrice)); setProposing(false); setProposalPrice(''); }}} className="px-4 py-2 bg-[#f97316] text-black font-bold rounded-lg text-sm active:scale-95">Enviar</button>
+           <button onClick={()=>setProposing(false)} className="px-3 py-2 text-gray-400 font-bold text-sm">X</button>
+        </div>
+      )}
+
+      <div className={`p-4 border-t flex gap-2 pb-8 items-center ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
+        <button onClick={() => setProposing(!proposing)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Fazer Proposta">
+          <Icon name="request_quote" size={20} />
+        </button>
+        <button onClick={() => { if(partnerId) send(partnerId, '📷 [Anexo de Imagem da situação]', 'text'); }} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Anexar Imagem">
+          <Icon name="attach_file" size={20} />
+        </button>
+        <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&text&&partnerId){send(partnerId,text,'text');setText('');}}} placeholder="Mensagem..." className={`flex-1 border rounded-full px-4 py-3 outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
+        <button onClick={()=>{if(text&&partnerId){send(partnerId,text,'text');setText('');}}} className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black shrink-0"><Icon name="send" size={20} /></button>
       </div>
+      
+      <AnimatePresence>
+        {checkoutProposal && <CheckoutModal p={checkoutProposal} onClose={()=>setCheckoutProposal(null)} onPay={handlePaymentComplete} isDark={isDark} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
-  const [av, setAv] = useState(user.avatarUrl || '');
-  const [cv, setCv] = useState(user.coverUrl || '');
-  const [desc, setDesc] = useState(user.description || '');
-  const [aiGenerating, setAiGenerating] = useState(false);
-  
-  const generateAIAvatar = () => {
-    if(!av) { if(show) show('Por favor, cole um link de foto normal!'); return; }
-    setAiGenerating(true);
-    setTimeout(() => {
-      setAv('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
-      if(show) show('✨ IA: Foto Profissional Gerada!');
-      setAiGenerating(false);
-    }, 4000);
-  };
 
-  const inputCls = `w-full p-4 rounded-xl border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`;
+function CheckoutModal({ p, onClose, onPay, isDark }: any) {
+  const [method, setMethod] = useState<'pix'|'credit'>('pix');
+  const servicePrice = p.proposal.price;
+  const fee = servicePrice * 0.05;
+  const total = servicePrice + fee;
 
   return (
     <>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl max-h-[85vh] overflow-y-auto ${isDark?'bg-[#27272a] text-white':'bg-white text-[#191c1d]'}`}>
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="font-black text-2xl">Editar Perfil</h2>
-          <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 rounded-full"><Icon name="close"/></button>
-        </div>
-        
-        <div className="mb-6">
-          <label className="font-bold text-sm mb-2 block">Link da Foto de Perfil</label>
-          <div className="flex gap-2">
-            <input value={av} onChange={e=>setAv(e.target.value)} placeholder="https://..." className={`flex-1 p-4 rounded-xl border outline-none text-sm font-medium ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white border-[#e5e7eb]'}`} />
-            <button disabled={aiGenerating} onClick={generateAIAvatar} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center min-w-[56px]">
-              {aiGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Icon name="auto_awesome" />}
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-[#f8f9fa] dark:bg-[#121212] z-[100] overflow-y-auto hide-scrollbar pb-36">
+        <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-[#2a2a2a] bg-white dark:bg-[#1e1e1e] sticky top-0 z-10">
+          <button onClick={onClose} className="p-2"><Icon name="arrow_back" className="text-[#002a5d] dark:text-white" /></button>
+          <h1 className="font-black text-xl text-[#002a5d] dark:text-white tracking-tight">Checkout de Serviço</h1>
+        </header>
+
+        <div className="p-4">
+          <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Resumo da Compra</h2>
+          <div className={`p-4 rounded-2xl mb-6 shadow-sm border ${isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+            <div className="flex justify-between items-center mb-3">
+              <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Valor do Serviço</span>
+              <span className="font-bold">R$ {servicePrice.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center mb-4">
+              <span className={`text-sm flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Taxa de Segurança (5%) <Icon name="info" size={14}/></span>
+              <span className="font-bold text-orange-500">+ R$ {fee.toFixed(2)}</span>
+            </div>
+            <div className="w-full h-[1px] bg-gray-200 dark:bg-[#3f3f46] mb-4" />
+            <div className="flex justify-between items-center">
+              <span className="font-black text-lg">Total</span>
+              <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Forma de Pagamento</h2>
+          <div className="flex flex-col gap-3 mb-8">
+            <button onClick={()=>setMethod('pix')} className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${method === 'pix' ? 'border-[#f97316] bg-[#fff7ed] dark:bg-[#f97316]/10' : (isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-gray-200')}`}>
+              <Icon name="pix" className={method==='pix'?'text-[#f97316]':''} />
+              <span className="font-bold flex-1 text-left">Pix</span>
+              {method === 'pix' && <Icon name="check_circle" className="text-[#f97316]" />}
+            </button>
+            <button onClick={()=>setMethod('credit')} className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${method === 'credit' ? 'border-[#f97316] bg-[#fff7ed] dark:bg-[#f97316]/10' : (isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-gray-200')}`}>
+              <Icon name="credit_card" className={method==='credit'?'text-[#f97316]':''} />
+              <span className="font-bold flex-1 text-left">Cartão de Crédito</span>
+              {method === 'credit' && <Icon name="check_circle" className="text-[#f97316]" />}
             </button>
           </div>
-          {aiGenerating && <p className="text-xs font-bold text-indigo-500 mt-2 animate-pulse flex items-center gap-1"><Icon name="memory" size={14} /> Processando com Inteligência Artificial...</p>}
-          {!aiGenerating && <p className="text-xs opacity-60 mt-2">Cole o link da sua foto e clique na estrela mágica para transformar em foto de estúdio.</p>}
+          
+          <div className={`p-4 rounded-xl flex gap-3 ${isDark ? 'bg-[#27272a] text-[#a1a1aa]' : 'bg-gray-100 text-gray-600'}`}>
+            <Icon name="shield" className="text-green-500 shrink-0" />
+            <p className="text-xs">Seu dinheiro fica retido de forma segura até a conclusão do serviço (Take Rate).</p>
+          </div>
         </div>
 
-        {user.role === 'professional' && (
-          <>
-            <label className="font-bold text-sm mb-2 block">Link da Foto de Capa (Opcional)</label>
-            <input value={cv} onChange={e=>setCv(e.target.value)} placeholder="https://..." className={`${inputCls} mb-6`} />
-            <label className="font-bold text-sm mb-2 block">Sobre o seu trabalho (Bio)</label>
-            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Conte para os clientes a sua experiência e diferenciais..." className={`${inputCls} mb-6 min-h-[120px]`} />
-          </>
-        )}
-        <button disabled={aiGenerating} onClick={()=>onSave({ avatarUrl: av, coverUrl: cv, description: desc })} className="w-full py-4 rounded-xl font-black text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform mt-2 disabled:opacity-50">Salvar Alterações</button>
+        <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
+          <button onClick={onPay} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">
+            Pagar R$ {total.toFixed(2)}
+          </button>
+        </div>
       </motion.div>
     </>
   );
 }
 
 
+function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
+  const [av, setAv] = useState(user.avatarUrl || '');
+  const [desc, setDesc] = useState(user.description || '');
+  const [profession, setProfession] = useState(user.profession || '');
+  const [region, setRegion] = useState(user.region || '');
 
+  return (
+    <>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
+        <h2 className="font-bold text-2xl mb-4">Editar Perfil</h2>
+        
+        <div className="flex flex-col gap-4 mb-6">
+          <input value={av} onChange={e=>setAv(e.target.value)} placeholder="URL da Foto de Perfil" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+          {user.role === 'professional' && (
+            <>
+              <input value={profession} onChange={e=>setProfession(e.target.value)} placeholder="Sua Profissão" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+              <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Sua Descrição" className={`w-full p-4 rounded-xl border outline-none text-sm min-h-[100px] ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+            </>
+          )}
+          <input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Sua Região/Cidade" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
+        </div>
 
+        <button onClick={() => onSave({ avatarUrl: av, description: desc, profession, region })} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform">Salvar Alterações</button>
+      </motion.div>
+    </>
+  );
+}
 
+function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, updateProfile, show }: any) {
+  const { currentRole, setCurrentRole } = useContext(RoleContext);
+  const [editModal, setEditModal] = useState(false);
 
-
-
-
-
-
-
-
-
-function ProfileScreen({ user, isDark, logout, toggleDarkMode, updateProfile, show }: any) {
-  const navigate = useNavigate();
   if (!user) {
     return (
-      <div className="p-8 text-center flex flex-col items-center justify-center min-h-screen">
-        <h2 className="font-bold text-xl mb-4">Você não está logado.</h2>
-        <button onClick={() => navigate('/auth')} className="bg-[#f97316] text-black font-bold px-6 py-3 rounded-xl shadow-lg">Entrar ou Cadastrar</button>
+      <div className="p-6 flex flex-col items-center justify-center min-h-[70vh] text-center">
+        <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center mb-6">
+          <Icon name="person_off" size={48} className="opacity-50" />
+        </div>
+        <h2 className="font-black text-2xl mb-2">Acesse sua conta</h2>
+        <p className={`text-sm mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Faça login para gerenciar seu perfil e pedidos.</p>
+        <Link to="/auth" className="px-8 py-4 bg-[#f97316] text-black rounded-xl font-black shadow-lg active:scale-95 transition-transform">Fazer Login</Link>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen pb-24 p-6 ${isDark ? 'bg-[#121212] text-white' : 'bg-[#f8f9fa] text-[#002a5d]'}`}>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="font-black text-3xl">Meu Perfil</h1>
-        <button onClick={toggleDarkMode} className="p-2 rounded-full border bg-opacity-20 active:scale-95 transition-transform">
-          <Icon name={isDark ? 'light_mode' : 'dark_mode'} />
-        </button>
+    <div className="pb-24">
+      <div className="relative h-32 bg-gradient-to-r from-[#f97316] to-[#ea580c]">
+        <div className="absolute -bottom-10 left-6 w-20 h-20 rounded-full border-4 border-white dark:border-[#18181b] bg-gray-200 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
+          {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" /> : <span className="font-black text-3xl opacity-50">{user.avatarInitial}</span>}
+        </div>
       </div>
       
-      <div className={`p-6 rounded-3xl border shadow-sm flex flex-col items-center text-center mb-6 ${isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-[#e5e7eb]'}`}>
-        <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 mb-4 border-4 border-[#f97316]">
-          {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover"/> : <Icon name="person" size={48} className="opacity-50 mt-4" />}
-        </div>
-        <h2 className="font-bold text-xl mb-1">{user.name}</h2>
-        <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{user.email}</p>
-        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${user.role === 'professional' ? 'bg-[#3730a3] text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}>
-          {user.role === 'professional' ? 'Profissional' : 'Cliente'}
-        </span>
-      </div>
+      <div className="px-6 pt-12">
+        <h1 className="font-black text-2xl mb-1 flex items-center gap-2">
+          {user.name}
+          {user.verified && <Icon name="verified_user" size={18} className="text-green-500" fill />}
+        </h1>
+        <p className={`text-sm font-medium mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{user.email}</p>
 
-      <div className="flex flex-col gap-3">
         {user.role === 'professional' && (
-          <button onClick={() => navigate('/meus-servicos')} className={`p-4 rounded-xl border flex justify-between items-center font-bold active:scale-95 transition-transform ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-            <span className="flex items-center gap-3"><Icon name="work" /> Meus Serviços</span>
+          <div className={`p-5 rounded-3xl border mb-6 ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
+            <h3 className="font-black text-lg mb-1">Alternar Modo</h3>
+            <p className={`text-xs mb-4 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Alterne entre a visão de prestador e cliente.</p>
+            <div className="flex bg-gray-100 dark:bg-[#18181b] rounded-xl p-1 relative">
+               <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#f97316] rounded-lg shadow-md transition-all duration-300 ${currentRole === 'client' ? 'left-1' : 'left-[calc(50%+2px)]'}`} />
+               <button onClick={() => { setCurrentRole('client'); updateProfile({ currentMode: 'client' }); }} className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${currentRole === 'client' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>Cliente</button>
+               <button onClick={() => { setCurrentRole('professional'); updateProfile({ currentMode: 'professional' }); }} className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${currentRole === 'professional' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>Profissional</button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <button onClick={() => setEditModal(true)} className={`p-4 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <div className="flex items-center gap-3">
+              <Icon name="edit" className="text-[#f97316]" />
+              <span className="font-bold">Editar Perfil</span>
+            </div>
             <Icon name="chevron_right" />
           </button>
-        )}
-        <button onClick={() => { logout(); navigate('/busca'); show('Desconectado.'); }} className={`p-4 rounded-xl border flex justify-between items-center font-bold text-red-500 active:scale-95 transition-transform ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-          <span className="flex items-center gap-3"><Icon name="logout" /> Sair da conta</span>
-        </button>
+          
+          <button onClick={toggleDarkMode} className={`p-4 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <div className="flex items-center gap-3">
+              <Icon name={isDark ? 'light_mode' : 'dark_mode'} className="text-[#f97316]" />
+              <span className="font-bold">{isDark ? 'Modo Claro' : 'Modo Escuro'}</span>
+            </div>
+          </button>
+
+          <button onClick={logout} className={`p-4 rounded-xl border flex items-center gap-3 text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <Icon name="logout" className="text-red-500" />
+            <span className="font-bold text-red-500">Sair da Conta</span>
+          </button>
+        </div>
       </div>
+      
+      <AnimatePresence>
+        {editModal && <EditProfileModal user={user} onClose={()=>setEditModal(false)} onSave={(data: any)=>{ updateProfile(data); setEditModal(false); if(show) show('Perfil atualizado com sucesso!'); }} isDark={isDark} show={show} />}
+      </AnimatePresence>
     </div>
   );
 }

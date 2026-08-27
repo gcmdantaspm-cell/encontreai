@@ -6,6 +6,7 @@ export interface AppUser {
   email: string;
   phone?: string;
   role: UserRole;
+  currentMode?: 'client' | 'professional';
   avatarInitial: string;
   avatarUrl?: string;
   favorites: string[];
@@ -50,13 +51,16 @@ export interface Appointment {
   serviceTitle: string;
   price: number;
   originalPrice?: number;
+  addons?: { id: string; name: string; price: number; }[];
+  recurrence?: 'once' | 'weekly' | 'biweekly';
   discount?: number;
   date: string;
   time: string;
-  status: 'pending' | 'approved' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'completed' | 'cancelled' | 'paid';
   clientName: string;
   professionalName: string;
   reviewed?: boolean; // Se o cliente já avaliou
+  proReviewed?: boolean; // Se o profissional já avaliou
   createdAt: string;
   notes?: string;
 }
@@ -74,7 +78,10 @@ export interface Review {
   clientName: string;
   rating: number;
   text: string;
+  imageUrl?: string;
   createdAt: string;
+  type?: 'text' | 'proposal';
+  proposal?: { price: number; status: 'pending' | 'accepted' | 'rejected' | 'countered'; serviceId?: string; serviceTitle?: string; };
 }
 
 export interface ChatMessage {
