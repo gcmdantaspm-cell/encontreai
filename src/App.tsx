@@ -300,7 +300,7 @@ function BottomBar({ isDark }: any) {
   const tabs = clientTabs; // As requested, always show Home, Buscar, Pedidos, Perfil
   
   return (
-    <div className={`w-full max-w-[448px] shrink-0 border-t flex justify-around items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className={`w-full shrink-0 border-t flex justify-around lg:hidden items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
        {tabs.map(t => {
          const active = loc.pathname.startsWith(t.id);
          return (
@@ -350,11 +350,36 @@ function AppContent() {
       <GlobalNotifications user={user} isDark={isDark} />
       <Sidebar isOpen={isSidebarOpen} close={() => setIsSidebarOpen(false)} user={user} isDark={isDark} logout={logout} />
       <div className={`flex justify-center h-screen h-[100dvh] overflow-hidden ${isDark ? 'bg-black' : 'bg-[#e7e8e9]'}`}>
-        <div className={`w-full max-w-[448px] h-full relative flex flex-col overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+        <div className={`w-full max-w-7xl h-full relative flex overflow-hidden shadow-2xl transition-colors duration-300 pt-[env(safe-area-inset-top)] ${isDark ? 'bg-[#18181b] text-white' : 'bg-[#f8f9fa] text-[#191c1d]'}`}>
+          {!hideBottomNav && (
+             <div className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
+                <div className="p-6">
+                   <Logo isDark={isDark} hideSubtitle={false} />
+                </div>
+                <div className="flex flex-col gap-2 px-4 mt-4 flex-1">
+                   {clientTabs.map(t => {
+                     const active = loc.pathname.startsWith(t.id);
+                     return (
+                       <Link to={t.id} key={t.id} className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${active ? 'bg-[#f97316] text-white' : (isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200')}`}>
+                         <Icon name={t.icon} fill={active} size={24} />
+                         <span>{t.label}</span>
+                       </Link>
+                     )
+                   })}
+                </div>
+                <div className="p-4 mb-4">
+                   <button onClick={logout} className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200'}`}>
+                     <Icon name="logout" size={24} />
+                     <span>Sair</span>
+                   </button>
+                </div>
+             </div>
+          )}
+          <div className="flex-1 flex flex-col relative overflow-hidden min-w-0">
           
           {!hideBottomNav && !loc.pathname.startsWith('/servico/') && (
-            <header className={`w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
-              <button onClick={() => setIsSidebarOpen(true)} className={`absolute left-4 w-10 h-10 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
+            <header className={`lg:hidden w-full sticky top-0 z-50 flex items-center justify-center px-4 py-3 ${isDark ? 'bg-[#18181b]' : 'bg-[#f8f9fa]'}`}>
+              <button onClick={() => setIsSidebarOpen(true)} className={`absolute left-4 w-11 h-11 flex items-center justify-center ${isDark?'text-white':'text-black'}`}>
                 <Icon name="menu" size={24} />
               </button>
               <Logo isDark={isDark} hideSubtitle={true} />
@@ -384,7 +409,7 @@ function AppContent() {
           </div>
           
           {!hideBottomNav && <BottomBar isDark={isDark} />}
-          
+          </div>
         </div>
       </div>
       {t?.msg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full font-bold shadow-xl z-[999]">{t.msg}</div>}
@@ -417,7 +442,7 @@ function OnboardingScreen({ updateRole, isDark }: any) {
     };
     
     if(step === 1) return (
-      <div className={`p-6 flex flex-col items-center justify-center min-h-screen max-w-[448px] mx-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
+      <div className={`p-6 flex flex-col items-center justify-center min-h-screen max-w-md w-full mx-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
          <Icon name="handshake" size={64} className={`mb-6 ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`} />
          <h1 className="text-3xl font-black mb-8 text-center leading-tight">Como você quer usar o EncontreAi?</h1>
          <button onClick={() => updateRole('client')} className="w-full bg-[#f97316] text-black font-black text-lg p-5 rounded-2xl mb-4 shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3">
@@ -430,7 +455,7 @@ function OnboardingScreen({ updateRole, isDark }: any) {
     );
   
     return (
-      <div className={`p-6 flex flex-col h-full pt-10 pb-20 max-w-[448px] mx-auto overflow-y-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
+      <div className={`p-6 flex flex-col h-full pt-10 pb-20 max-w-md w-full mx-auto overflow-y-auto ${isDark?'bg-[#18181b] text-white':'bg-[#f8f9fa] text-black'}`}>
          <button onClick={()=>setStep(1)} className="mb-6 self-start"><Icon name="arrow_back" /></button>
          <h1 className="text-3xl font-black mb-2">Seu Perfil Profissional</h1>
          <p className={`mb-8 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>Precisamos de alguns dados adicionais para validar o seu perfil e passar segurança aos clientes.</p>
@@ -612,11 +637,11 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
         </div>
       </div>
 
-      <div className={`flex-1 ${viewMode === 'map' ? 'h-[400px] sm:h-[500px]' : ''}`}>
+      <div className={`flex-1 ${viewMode === 'map' ? 'h-[400px] sm:h-[500px] lg:h-[700px] min-h-[50vh]' : ''}`}>
         {viewMode === 'map' ? (
           <MapView pros={pros} isDark={isDark} />
         ) : (
-          <div className="px-4">
+          <div className="px-4 max-w-7xl mx-auto w-full">
             <div className="flex justify-between items-center mb-4">
                <h2 className="font-black text-lg">Serviços em Destaque</h2>
                <div className="flex gap-2">
@@ -631,11 +656,11 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show }: any) {
             
             {filtered.length === 0 && <div className="text-center py-10 opacity-50 font-medium">Nenhum serviço encontrado.</div>}
 
-            <div className="flex flex-col gap-3 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
               {filtered.map((s:any) => {
                 const isFav = user?.favorites?.includes(s.pro.id);
                 return (
-                  <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+                  <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm hover:shadow-md transition-all items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
                     <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
                        <img src={s.imageUrls?.[0] || s.imageUrl || s.pro?.avatarUrl || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop"} className="w-full h-full object-cover" />
                        <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
@@ -709,10 +734,10 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
         <img src={pro.coverUrl || pro.avatarUrl} className="w-full h-full object-cover opacity-60" />
         <div className={`absolute inset-0 bg-gradient-to-b ${isDark?'from-black/60 via-black/20 to-[#121212]':'from-black/50 via-black/10 to-[#f8f9fa]'}`}></div>
         
-        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4 w-11 h-11 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
           <Icon name="arrow_back" className="text-white" />
         </button>
-        <button onClick={() => toggleFavorite(pro.id)} className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
+        <button onClick={() => toggleFavorite(pro.id)} className="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md">
           <Icon name="favorite" fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
         </button>
         
@@ -754,10 +779,10 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
                    <span className={`font-black text-sm ${isDark?'text-[#60a5fa]':'text-blue-600'}`}>R$ {s.price.toFixed(2)}</span>
                  </div>
                  <div className="flex gap-2 shrink-0">
-                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center active:scale-95 transition-transform shadow-md">
+                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } setBookingService({ ...s, pro }); }} className="w-11 h-11 rounded-full bg-[#f97316] text-black flex items-center justify-center active:scale-95 transition-transform shadow-md">
                      <Icon name="calendar_month" size={18} />
                    </button>
-                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } navigate(`/chat/${pro.id}`); }} className={`w-10 h-10 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark ? 'border-[#3f3f46] text-white' : 'border-gray-300 text-black'}`}>
+                   <button onClick={() => { if(!user) { show('Faça login primeiro!'); navigate('/auth'); return; } navigate(`/chat/${pro.id}`); }} className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-95 transition-transform ${isDark ? 'border-[#3f3f46] text-white' : 'border-gray-300 text-black'}`}>
                      <Icon name="chat" size={18} />
                    </button>
                  </div>
@@ -815,8 +840,7 @@ function DashboardProScreen({ user, isDark, go }: any) {
   const earned = user.walletBalance || apts.filter(a => a.status === 'completed').reduce((sum, a) => sum + (a.price * 0.93), 0);
 
   return (
-    <div className="pb-24">
-      
+    <div className="pb-24 max-w-5xl mx-auto w-full">
       <div className="p-4">
        <h1 className="font-black text-2xl mb-2">Olá, {user.name.split(' ')[0]} 👋</h1>
        <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe seus ganhos e agenda do dia.</p>
@@ -954,12 +978,11 @@ function MyServicesScreen({ user, isDark, show }: any) {
   const toggleArr = (arr: any[], setArr: any, val: any) => setArr(arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val].sort((a,b)=>a>b?1:-1));
 
   return (
-    <div className="pb-24">
-      
+    <div className="pb-24 max-w-5xl mx-auto w-full">
       <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="font-black text-2xl">Meus Serviços</h1>
-        <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-10 h-10 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
+        <button onClick={()=>{setAdding(!adding); resetForm();}} className="w-11 h-11 rounded-full bg-[#f97316] text-black flex items-center justify-center shadow-lg active:scale-95 transition-transform"><Icon name={adding?"close":"add"} /></button>
       </div>
       <AnimatePresence>
         {adding && (
@@ -1135,9 +1158,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
-      
-      
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 max-w-6xl mx-auto w-full">
         <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Pedidos'}</h1>
         <p className={`text-sm mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe o status dos seus serviços solicitados.</p>
         
@@ -1148,7 +1169,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
         </div>
 
         {filtered.length === 0 ? <p className="opacity-50 text-center py-10 font-medium">Nenhum pedido encontrado.</p> : (
-          <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
              {filtered.map(a => {
                const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
                  pending: { label: 'Em Andamento', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
@@ -1160,7 +1181,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                const cfg = stCfg[a.status] || stCfg.pending;
                const pro = pros.find((p:any) => p.id === a.professionalId);
                
-               const rawDate = a.date.split('-'); 
+               const rawDate = (a.date || '').split('-'); 
                const fmtDate = rawDate.length === 3 ? `${rawDate[2]} ${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(rawDate[1])-1]}` : a.date;
                
                return (
@@ -1255,14 +1276,19 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
       </div>
       <AnimatePresence>{reviewModal && <ReviewModal a={reviewModal} onClose={()=>setReviewModal(null)} onSubmit={submitReview} isDark={isDark} userRole={user.role} />}</AnimatePresence>
       <AnimatePresence>
-        {checkoutOrder && <CheckoutModal p={{ proposal: { price: checkoutOrder.price } }} onClose={()=>setCheckoutOrder(null)} onPay={async (method)=>{
-          await updateStatus(checkoutOrder.id, 'approved');
-          // Update the chat message as well if it exists
-          if (checkoutOrder.chatMsgId) {
-            updateDoc(doc(db, 'chats', checkoutOrder.chatMsgId), { 'proposal.status': 'paid' });
+        {checkoutOrder && <CheckoutModal p={{ proposal: { price: Number(checkoutOrder.price) || 0 } }} onClose={()=>setCheckoutOrder(null)} onPay={async (method)=>{
+          try {
+            await updateStatus(checkoutOrder.id, 'approved');
+            // Update the chat message as well if it exists
+            if (checkoutOrder.chatMsgId) {
+              await updateDoc(doc(db, 'chats', checkoutOrder.chatMsgId), { 'proposal.status': 'paid' }).catch(e => console.error('Chat update failed', e));
+            }
+            setCheckoutOrder(null);
+            if(show) show('Pagamento via ' + method + ' aprovado! Reserva confirmada e código gerado.');
+          } catch(e) {
+            console.error('Payment error', e);
+            alert('Erro ao processar pagamento: ' + e.message);
           }
-          setCheckoutOrder(null);
-          if(show) show('Pagamento via ' + method + ' aprovado! Reserva confirmada e código gerado.');
         }} isDark={isDark} />}
       </AnimatePresence>
     </div>
@@ -1342,8 +1368,8 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
           ))}
         </div>
       </div>
-      <div className={`fixed bottom-0 w-full max-w-[448px] p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none`}>
-        <div className="flex gap-2 pointer-events-auto">
+      <div className={`absolute bottom-0 left-0 w-full p-4 pt-8 z-40 bg-gradient-to-t ${isDark?'from-[#18181b] via-[#18181b]':'from-[#f8f9fa]'} to-transparent pointer-events-none flex justify-center`}>
+        <div className="flex gap-2 pointer-events-auto max-w-xl w-full">
           {user?.role === 'client' && (
              <button onClick={() => go('chat-detail', { id: pro.id })} className="w-14 h-14 bg-white dark:bg-[#27272a] rounded-2xl flex items-center justify-center shadow-lg border border-gray-200 dark:border-[#3f3f46] text-[#f97316]">
                 <Icon name="chat" size={28} />
@@ -1355,7 +1381,7 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
       </div>
       <AnimatePresence>
         {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={async (d:any, t:any, addons:any, recurrence:any, totalPrice:any, paymentMethod:any) => { 
-                add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
+                await add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
                 show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); go('orders'); }} isDark={isDark} />}
       </AnimatePresence>
     </div>
@@ -1414,7 +1440,7 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
           <h1 className="font-black text-xl text-[#002a5d] dark:text-white tracking-tight">Confirmar Agendamento</h1>
         </header>
         
-        <div className="p-4">
+        <div className="p-4 max-w-xl mx-auto w-full">
           <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] p-4 flex gap-4 mb-6 shadow-sm">
             <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 relative">
                <img src={svc?.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
@@ -1546,7 +1572,8 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
           </div>
         )}
 
-        </div><div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
+        </div><div className="absolute bottom-0 left-0 w-full bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101] flex justify-center">
+          <div className="max-w-xl w-full">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Total {recurrence !== 'once' && `(por sessão)`}</span>
             <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {totalPrice.toFixed(2)}</span>
@@ -1556,6 +1583,7 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
           ) : (
              <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice, paymentMethod)} disabled={!paymentMethod} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar e Pagar</button>
           )}
+        </div>
         </div>
       </motion.div>
     </>
@@ -1567,7 +1595,7 @@ function ReviewModal({ a, onClose, onSubmit, isDark, userRole }: any) {
   return (
     <>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:max-w-md md:rounded-3xl rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
         <h2 className="font-bold text-2xl mb-1">Avaliar Serviço</h2>
         <p className={`text-sm mb-6 ${isDark?'text-[#a1a1aa]':'text-gray-500'}`}>{userRole === 'professional' ? `Como foi o cliente ${a.clientName}?` : `Como foi o serviço de ${a.professionalName}?`}</p>
         <div className="flex justify-center gap-3 mb-8">
@@ -1667,20 +1695,19 @@ function ChatListScreen({ user, pros, isDark }: any) {
 
 
   return (
-    <div className="pb-24">
-      
+    <div className="pb-24 max-w-5xl mx-auto w-full">
       <div className="p-4">
       <div className="flex items-center gap-3 mb-6">
         
         <h1 className="font-black text-2xl">Mensagens</h1>
       </div>
       {chatPartners.length === 0 && <div className="text-center py-10 text-gray-500"><Icon name="forum" size={48} className="opacity-30 mb-2" /><p className="text-sm">Nenhuma mensagem recente.</p></div>}
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {chatPartners.map((pid:any) => {
           const lastMsg = msgs.filter((m:any) => m.participants.includes(pid)).pop();
           const partnerName = partnerNames[pid as string] || 'Carregando...';
           return (
-            <button key={pid} onClick={()=>navigate(`/chat/${pid}`)} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <button key={pid} onClick={()=>navigate(`/chat/${pid}`)} className={`p-4 rounded-xl border flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow text-left ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
               <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-black shrink-0"><Icon name="person" /></div>
               <div className="flex-1 overflow-hidden">
                 <h3 className="font-bold text-lg">{partnerName}</h3>
@@ -1847,14 +1874,14 @@ function ChatDetailScreen({ user, isDark }: any) {
       )}
 
       <div className={`p-4 border-t flex gap-2 pb-8 items-center ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white'}`}>
-        <button onClick={() => setProposing(!proposing)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Fazer Proposta">
+        <button onClick={() => setProposing(!proposing)} className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Fazer Proposta">
           <Icon name="request_quote" size={20} />
         </button>
-        <button onClick={() => { if(partnerId) send(partnerId, '📷 [Anexo de Imagem da situação]', 'text'); }} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Anexar Imagem">
+        <button onClick={() => { if(partnerId) send(partnerId, '📷 [Anexo de Imagem da situação]', 'text'); }} className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${isDark?'bg-[#3f3f46] text-[#a1a1aa] hover:bg-[#52525b]':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Anexar Imagem">
           <Icon name="attach_file" size={20} />
         </button>
         <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&text&&partnerId){send(partnerId,text,'text');setText('');}}} placeholder="Mensagem..." className={`flex-1 border rounded-full px-4 py-3 outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-white'}`} />
-        <button onClick={()=>{if(text&&partnerId){send(partnerId,text,'text');setText('');}}} className="w-10 h-10 rounded-full bg-[#f97316] flex items-center justify-center text-black shrink-0"><Icon name="send" size={20} /></button>
+        <button onClick={()=>{if(text&&partnerId){send(partnerId,text,'text');setText('');}}} className="w-11 h-11 rounded-full bg-[#f97316] flex items-center justify-center text-black shrink-0"><Icon name="send" size={20} /></button>
       </div>
       
       <AnimatePresence>
@@ -1879,7 +1906,7 @@ function CheckoutModal({ p, onClose, onPay, isDark }: any) {
           <h1 className="font-black text-xl text-[#002a5d] dark:text-white tracking-tight">Checkout de Serviço</h1>
         </header>
 
-        <div className="p-4">
+        <div className="p-4 max-w-xl mx-auto w-full">
           <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Resumo da Compra</h2>
           <div className={`p-4 rounded-2xl mb-6 shadow-sm border ${isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
             <div className="flex justify-between items-center mb-3">
@@ -1922,10 +1949,12 @@ function CheckoutModal({ p, onClose, onPay, isDark }: any) {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 w-full max-w-[448px] bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101]">
+        <div className="absolute bottom-0 left-0 w-full bg-white dark:bg-[#1e1e1e] border-t border-gray-200 dark:border-[#2a2a2a] p-4 z-[101] flex justify-center">
+          <div className="max-w-xl w-full">
           <button onClick={() => onPay(method)} className="w-full py-4 rounded-xl font-black text-lg text-black bg-[#f97316] active:scale-95 transition-transform">
             Pagar R$ {total.toFixed(2)}
           </button>
+          </div>
         </div>
       </motion.div>
     </>
@@ -1942,7 +1971,7 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
   return (
     <>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose} className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm" />
-      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
+      <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className={`fixed bottom-0 left-0 w-full md:left-1/2 md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:max-w-md md:rounded-3xl rounded-t-3xl z-[101] p-6 shadow-2xl ${isDark ? 'bg-[#27272a] text-white' : 'bg-white text-gray-900'}`}>
         <h2 className="font-bold text-2xl mb-4">Editar Perfil</h2>
         
         <div className="flex flex-col gap-4 mb-6">
@@ -1980,7 +2009,7 @@ function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, 
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-24 max-w-3xl mx-auto w-full">
       <div className="relative h-32 bg-gradient-to-r from-[#f97316] to-[#ea580c]">
         <div className="absolute -bottom-10 left-6 w-20 h-20 rounded-full border-4 border-white dark:border-[#18181b] bg-gray-200 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
           {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" /> : <span className="font-black text-3xl opacity-50">{user.avatarInitial}</span>}
