@@ -821,9 +821,9 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
              proId={bookingService.pro.id} 
              svc={bookingService} 
              onClose={()=>setBookingService(null)} 
-             onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number, paymentMethod:string)=>{
-                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'approved', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, paymentMethod, createdAt: new Date().toISOString() });
-                setBookingService(null); show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); navigate('/pedidos');
+             onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending_approval', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
+                setBookingService(null); show(`Agendamento solicitado! Aguardando aprovação do prestador.`); navigate('/pedidos');
              }} 
              isDark={isDark} 
           />}
@@ -940,9 +940,9 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
             proId={pro.id} 
             svc={bookingService} 
             onClose={()=>setBookingService(null)} 
-            onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number, paymentMethod:string)=>{
-                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'approved', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, paymentMethod, createdAt: new Date().toISOString() });
-                setBookingService(null); show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); navigate('/pedidos');
+            onBook={async(d:any, t:any, selectedAddons:any[], recurrence:string, totalPrice:number)=>{
+                await addDoc(collection(db, 'appointments'), { professionalId: bookingService.pro.id, clientId: user.id, clientName: user.name, serviceId: bookingService.id, serviceTitle: bookingService.title, date: d, time: t, status: 'pending_approval', price: totalPrice || bookingService.price, recurrence, addons: selectedAddons, createdAt: new Date().toISOString() });
+                setBookingService(null); show(`Agendamento solicitado! Aguardando aprovação do prestador.`); navigate('/pedidos');
              }} 
             isDark={isDark} 
           />
@@ -1344,7 +1344,8 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
     const paymentStatus = params.get('payment');
     const proposalId = params.get('proposalId');
     if(paymentStatus === 'success' && proposalId) {
-       updateStatus(proposalId, 'approved');
+       // Check if status is already updated to avoid race condition / multiple updates
+       updateStatus(proposalId, 'awaiting_execution');
        
        // Update chat message if chatMsgId exists on this appointment
        getDoc(doc(db, 'appointments', proposalId)).then(snap => {
@@ -1402,12 +1403,12 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
   };
 
   if (!user) return null;
-  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'approved' || a.status === 'pending' || a.status === 'pending_payment' || a.status === 'in_progress')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
+  const filtered = apts.filter(a => filter === 'all' || (filter === 'active' && (a.status === 'awaiting_execution' || a.status === 'pending_approval' || a.status === 'pending_payment')) || (filter === 'done' && a.status === 'completed') || (filter === 'cancelled' && a.status === 'cancelled'));
   
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar">
       <div className="px-4 mt-4 max-w-6xl mx-auto w-full">
-        <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Agenda Completa' : 'Meus Serviços'}</h1>
+        <h1 className="font-black text-2xl mb-1">{user.role==='professional' ? 'Serviços a Realizar' : 'Meus Serviços'}</h1>
         <p className={`text-sm mb-4 ${isDark?'text-[#a1a1aa]':'text-gray-600'}`}>Acompanhe o status dos seus serviços solicitados.</p>
         
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 mb-2">
@@ -1420,14 +1421,13 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
              {filtered.map(a => {
                const stCfg: Record<string, {label:string, border:string, badgeBg:string, badgeText:string}> = {
-                 pending: { label: 'Pendente Aprovação do Prestador', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
-                 pending_payment: { label: 'Pendente Pagamento', border: '#eab308', badgeBg: isDark ? '#fef08a' : '#fef08a', badgeText: '#854d0e' },
-                 approved: { label: 'Pagamento Confirmado - Aguardando Execução', border: '#3b82f6', badgeBg: isDark ? '#dbeafe' : '#dbeafe', badgeText: '#1e40af' },
-                 in_progress: { label: 'Em Execução', border: '#8b5cf6', badgeBg: isDark ? '#ede9fe' : '#ede9fe', badgeText: '#5b21b6' },
+                 pending_approval: { label: user.role === 'client' ? 'Pendente aprovação do prestador' : 'Pendente aprovação', border: '#f97316', badgeBg: isDark ? '#ffedd5' : '#ffedd5', badgeText: '#9a3412' },
+                 pending_payment: { label: user.role === 'client' ? 'Pendente pagamento' : 'Aguardando pagamento do cliente', border: '#eab308', badgeBg: isDark ? '#fef08a' : '#fef08a', badgeText: '#854d0e' },
+                 awaiting_execution: { label: user.role === 'client' ? 'Pagamento confirmado - Aguardando execução' : 'Pagamento retido - Pronto para executar', border: '#3b82f6', badgeBg: isDark ? '#dbeafe' : '#dbeafe', badgeText: '#1e40af' },
                  completed: { label: 'Finalizado', border: '#4ade80', badgeBg: isDark ? '#bbf7d0' : '#bbf7d0', badgeText: '#166534' },
                  cancelled: { label: 'Cancelado', border: '#fca5a5', badgeBg: isDark ? '#fee2e2' : '#fee2e2', badgeText: '#991b1b' }
                };
-               const cfg = stCfg[a.status] || stCfg.pending;
+               const cfg = stCfg[a.status] || stCfg.pending_approval;
                const pro = pros.find((p:any) => p.id === a.professionalId);
                
                const rawDate = (a.date || '').split('-'); 
@@ -1527,7 +1527,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
       <AnimatePresence>
         {checkoutOrder && <CheckoutModal p={{ proposal: { price: Number(checkoutOrder.price) || 0 } }} onClose={()=>setCheckoutOrder(null)} onPay={async (method)=>{
           try {
-            await updateStatus(checkoutOrder.id, 'approved');
+            await updateStatus(checkoutOrder.id, 'awaiting_execution');
             // Update the chat message as well if it exists
             if (checkoutOrder.chatMsgId) {
               await updateDoc(doc(db, 'chats', checkoutOrder.chatMsgId), { 'proposal.status': 'paid' }).catch(e => console.error('Chat update failed', e));
@@ -1629,9 +1629,9 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         </div>
       </div>
       <AnimatePresence>
-        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={async (d:any, t:any, addons:any, recurrence:any, totalPrice:any, paymentMethod:any) => { 
-                await add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'approved', clientName: user.name, professionalName: pro.name, paymentMethod }); setBookModal(null); 
-                show(`Pagamento aprovado via ${paymentMethod}! Dinheiro retido e reserva confirmada.`); go('orders'); }} isDark={isDark} />}
+        {bookModal && <BookingModal proId={pro.id} svc={bookModal} onClose={()=>setBookModal(null)} onBook={async (d:any, t:any, addons:any, recurrence:any, totalPrice:any) => { 
+                await add({ professionalId: pro.id, clientId: user.id, serviceId: bookModal.id, serviceTitle: bookModal.title, price: totalPrice || bookModal.price, date: d, time: t, status: 'pending_approval', clientName: user.name, professionalName: pro.name }); setBookModal(null); 
+                show(`Agendamento solicitado! Aguardando aprovação do prestador.`); go('orders'); }} isDark={isDark} />}
       </AnimatePresence>
     </div>
   );
@@ -1639,7 +1639,6 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
 
 function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
   const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('');
   const [d, setD] = useState(''); 
   const [t, setT] = useState('');
   
@@ -1791,32 +1790,9 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
               </div>
             </div>
 
-            <div>
-              <h2 className="font-bold text-xl mb-4 text-gray-900 dark:text-white">Forma de Pagamento</h2>
-              <div className="flex flex-col gap-3">
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'PIX' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
-                  <Icon name="pix" size={24} className="text-teal-500" />
-                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">PIX (Aprovação imediata)</span>
-                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'PIX'} onChange={() => setPaymentMethod('PIX')} />
-                </label>
-
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'CREDIT_CARD' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
-                  <Icon name="credit_card" size={24} className="text-blue-500" />
-                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">Cartão de Crédito</span>
-                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'CREDIT_CARD'} onChange={() => setPaymentMethod('CREDIT_CARD')} />
-                </label>
-
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'DEBIT_CARD' ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-600 dark:border-blue-500' : 'bg-white dark:bg-[#1e1e1e] border-gray-200 dark:border-[#2a2a2a]'}`}>
-                  <Icon name="account_balance_wallet" size={24} className="text-purple-500" />
-                  <span className="font-bold flex-1 text-gray-800 dark:text-gray-200">Cartão de Débito</span>
-                  <input type="radio" name="payment" className="hidden" checked={paymentMethod === 'DEBIT_CARD'} onChange={() => setPaymentMethod('DEBIT_CARD')} />
-                </label>
-              </div>
-            </div>
-
             <div className="p-4 rounded-xl bg-orange-50 dark:bg-[#2a1708] border border-orange-200 dark:border-orange-900 text-xs text-orange-800 dark:text-orange-200">
-              <p className="font-bold mb-1"><Icon name="lock" size={14} className="inline mr-1" />Pagamento Seguro (Sistema Anticálculo)</p>
-              <p>O seu dinheiro fica retido com a plataforma e só é repassado ao profissional (93%) mediante o fornecimento do seu código secreto no ato do serviço.</p>
+              <p className="font-bold mb-1"><Icon name="info" size={14} className="inline mr-1" />Aprovação do Profissional</p>
+              <p>Seu pedido será enviado ao profissional para confirmar a disponibilidade de horário e valor. O pagamento (com retenção segura) será feito apenas após a aprovação.</p>
             </div>
           </div>
         )}
@@ -1828,9 +1804,9 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
             <span className="font-black text-xl text-[#002a5d] dark:text-[#60a5fa]">R$ {totalPrice.toFixed(2)}</span>
           </div>
           {step === 1 ? (
-             <button onClick={() => setStep(2)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Avançar para Pagamento</button>
+             <button onClick={() => setStep(2)} disabled={!d||!t||!isDayAvailable} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Revisar Pedido</button>
           ) : (
-             <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice, paymentMethod)} disabled={!paymentMethod} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar e Pagar</button>
+             <button onClick={() => onBook(d,t, selectedAddons, recurrence, totalPrice)} className="w-full py-4 rounded-xl font-black text-lg text-black disabled:opacity-50 bg-[#f97316] active:scale-95 transition-transform">Confirmar Agendamento</button>
           )}
         </div>
         </div>
@@ -2034,7 +2010,7 @@ function ChatDetailScreen({ user, isDark }: any) {
       try {
         const price = checkoutProposal.proposal.price;
         // Mock successful payment
-        await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: price, date: checkoutProposal.proposal.date || new Date().toISOString().split('T')[0], time: checkoutProposal.proposal.time || 'A Combinar', status: 'approved', paymentMethod: method });
+        await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: price, date: checkoutProposal.proposal.date || new Date().toISOString().split('T')[0], time: checkoutProposal.proposal.time || 'A Combinar', status: 'awaiting_execution', paymentMethod: method });
         await updateMessage(checkoutProposal.id, { 'proposal.status': 'paid' });
         setCheckoutProposal(null);
         alert('Pagamento via ' + method + ' concluído com sucesso!');

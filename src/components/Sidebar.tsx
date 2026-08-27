@@ -46,7 +46,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any
       </button>
       
       <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="calendar_today" /> Meus Serviços
+        <Icon name="calendar_today" /> {user?.role === 'professional' ? 'Serviços a Realizar' : 'Meus Serviços'}
       </button>
 
       <button onClick={() => navigate('/chat-list')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/chat') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
@@ -58,6 +58,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any
       <button onClick={() => navigate('/painel-profissional/dashboard')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
         <Icon name="dashboard" /> Painel do Profissional
       </button>
+
 
       <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
         <Icon name="settings" /> Configurações
