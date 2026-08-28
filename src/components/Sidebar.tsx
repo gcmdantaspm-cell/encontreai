@@ -74,10 +74,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories, curre
 
   return (
     <>
-      {/* Desktop Sidebar: Always visible on large screens */}
-      <aside className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
-        <SidebarContent />
-      </aside>
+      
 
       {/* Mobile Sidebar: Overlay & Drawer */}
       <AnimatePresence>
@@ -88,7 +85,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories, curre
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={close}
-              className="fixed inset-0 bg-black/60 z-[100] lg:hidden backdrop-blur-sm"
+              className="fixed inset-0 bg-black/60 z-[100] backdrop-blur-sm"
               aria-hidden="true"
             />
             <motion.div
@@ -96,7 +93,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories, curre
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={`fixed top-0 left-0 bottom-0 w-[80%] max-w-[320px] z-[101] shadow-2xl flex flex-col lg:hidden ${isDark ? 'bg-[#18181b] text-white' : 'bg-white text-gray-900'}`}
+              className={`fixed top-0 left-0 bottom-0 w-[80%] max-w-[320px] z-[101] shadow-2xl flex flex-col  ${isDark ? 'bg-[#18181b] text-white' : 'bg-white text-gray-900'}`}
               role="dialog"
               aria-modal="true"
               aria-label="Menu Principal"

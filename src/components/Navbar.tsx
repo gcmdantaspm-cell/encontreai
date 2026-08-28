@@ -32,7 +32,7 @@ export function Navbar({ isDark, toggleDarkMode, user, currentRole, updateRole, 
         <button 
           onClick={toggleSidebar} 
           aria-label="Abrir Menu"
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors"
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#27272a] transition-colors"
         >
           <Icon name="menu" size={24} />
         </button>
