@@ -315,14 +315,14 @@ function ProtectedRoute({ allowedRole, children }: any) {
 const clientTabs = [
   { id: '/busca', icon: 'home', label: 'Home' },
   { id: '/pesquisa', icon: 'search', label: 'Buscar' },
-  { id: '/pedidos', icon: 'assignment', label: 'Pedidos' },
+  { id: '/pedidos', icon: 'assignment', label: 'Meus Serviços' },
   { id: '/perfil', icon: 'person', label: 'Perfil' }
 ];
 
 const proTabs = [
   { id: '/painel-profissional/dashboard', icon: 'dashboard', label: 'Painel' },
-  { id: '/pedidos', icon: 'calendar_month', label: 'Agenda' },
-  { id: '/chat-list', icon: 'chat', label: 'Chat' },
+  { id: '/painel-profissional/servicos', icon: 'campaign', label: 'Meus Anúncios' },
+  { id: '/pedidos', icon: 'calendar_today', label: 'Serviços' },
   { id: '/perfil', icon: 'person', label: 'Perfil' }
 ];
 
@@ -330,14 +330,12 @@ function BottomBar({ isDark }: any) {
   const { currentRole } = useContext(RoleContext);
   const loc = useLocation();
   
-  
-
-  const tabs = clientTabs; // As requested, always show Home, Buscar, Pedidos, Perfil
+  const tabs = currentRole === 'professional' ? proTabs : clientTabs;
   
   return (
     <div className={`w-full shrink-0 border-t flex justify-around lg:hidden items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
        {tabs.map(t => {
-         const active = loc.pathname.startsWith(t.id);
+         const active = (t.id === '/busca' || t.id === '/pesquisa') ? loc.pathname === t.id : loc.pathname.startsWith(t.id);
          return (
          <Link to={t.id} key={t.id} className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${active ? 'text-[#f97316]' : (isDark ? 'text-[#a1a1aa]' : 'text-gray-400')}`}>
            <Icon name={t.icon} fill={active} size={24} />
@@ -2255,15 +2253,20 @@ function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, 
           <span className="font-black text-2xl text-[#f97316]">R$ {(user.walletBalance || 0).toFixed(2)}</span>
         </div>
 
-        {true && (
-          <div className={`p-5 rounded-3xl border mb-6 ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
-            <h3 className="font-black text-lg mb-1">Alternar Modo</h3>
-            <p className={`text-xs mb-4 ${isDark ? 'text-[#a1a1aa]' : 'text-gray-500'}`}>Alterne entre a visão de prestador e cliente.</p>
-            <div className="flex bg-gray-100 dark:bg-[#18181b] rounded-xl p-1 relative">
-               <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#f97316] rounded-lg shadow-md transition-all duration-300 ${currentRole === 'client' ? 'left-1' : 'left-[calc(50%+2px)]'}`} />
-               <button onClick={() => { setCurrentRole('client'); updateProfile({ currentMode: 'client' }); }} className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${currentRole === 'client' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>Cliente</button>
-               <button onClick={() => { setCurrentRole('professional'); updateProfile({ currentMode: 'professional' }); }} className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${currentRole === 'professional' ? 'text-black' : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>Profissional</button>
-            </div>
+                {true && (
+          <div className={`p-5 rounded-3xl border mb-6 flex flex-col gap-3 ${isDark ? 'bg-[#27272a] border-[#3f3f46]' : 'bg-white border-[#e5e7eb]'}`}>
+            <h3 className="font-black text-lg mb-1">Alternar Modo de Conta</h3>
+            <button 
+               onClick={() => { 
+                 const newRole = currentRole === 'client' ? 'professional' : 'client';
+                 setCurrentRole(newRole); 
+                 updateProfile({ currentMode: newRole }); 
+               }} 
+               className="w-full py-4 bg-[#3730a3] text-white rounded-xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-lg"
+            >
+               <Icon name="swap_horiz" />
+               {currentRole === 'client' ? 'Alternar para Modo Profissional' : 'Voltar para Modo Cliente'}
+            </button>
           </div>
         )}
 

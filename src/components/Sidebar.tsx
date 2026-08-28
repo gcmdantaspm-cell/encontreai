@@ -6,7 +6,7 @@ function Icon({ name, className, size }: { name: string, className?: string, siz
   return <span className={`material-symbols-outlined ${className || ''}`} style={{ fontSize: size }}>{name}</span>;
 }
 
-export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any) {
+export function Sidebar({ isOpen, close, user, isDark, logout, categories, currentRole, setCurrentRole, updateProfile }: any) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCatOpen, setIsCatOpen] = useState(false);
@@ -16,68 +16,70 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any
     close();
   }, [location.pathname, close]);
 
+  const toggleRole = () => {
+    if (setCurrentRole) {
+      const newRole = currentRole === 'client' ? 'professional' : 'client';
+      setCurrentRole(newRole);
+      if (updateProfile) updateProfile({ currentMode: newRole });
+      close();
+      navigate(newRole === 'professional' ? '/painel-profissional/dashboard' : '/busca');
+    }
+  };
+
+  const ClientMenu = () => (
+    <>
+      <button onClick={() => navigate('/busca')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/busca' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`} aria-label="Home">
+        <Icon name="home" /> Home
+      </button>
+      <button onClick={() => navigate('/pesquisa')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pesquisa' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`} aria-label="Buscar">
+        <Icon name="search" /> Buscar
+      </button>
+      <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="assignment" /> Meus Serviços
+      </button>
+      <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="settings" /> Perfil
+      </button>
+    </>
+  );
+
+  const ProviderMenu = () => (
+    <>
+      <button onClick={() => navigate('/painel-profissional/dashboard')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional/dashboard') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="dashboard" /> Painel
+      </button>
+      <button onClick={() => navigate('/painel-profissional/servicos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional/servicos') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="campaign" /> Meus Anúncios
+      </button>
+      <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="assignment" /> Serviços a Realizar
+      </button>
+      <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
+        <Icon name="settings" /> Perfil
+      </button>
+    </>
+  );
+
   const SidebarContent = () => (
     <div className="flex-1 overflow-y-auto py-4 flex flex-col px-4 gap-1 hide-scrollbar">
-      <button onClick={() => navigate('/busca')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/busca' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`} aria-label="Ir para o Início">
-        <Icon name="home" /> Início
-      </button>
-
-      <div className="flex flex-col">
-        <button onClick={() => setIsCatOpen(!isCatOpen)} aria-expanded={isCatOpen} aria-label="Abrir Menu de Categorias" className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium text-sm transition-colors hover:bg-gray-100 dark:hover:bg-[#27272a]`}>
-          <div className="flex items-center gap-4"><Icon name="category" /> Categorias</div>
-          <Icon name={isCatOpen ? 'expand_less' : 'expand_more'} size={20} />
-        </button>
-        <AnimatePresence>
-          {isCatOpen && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col pl-12 pr-4 pt-1 gap-2">
-              <button onClick={() => navigate('/busca')} className={`text-left py-2 text-sm font-medium transition-colors ${isDark?'text-gray-400 hover:text-white':'text-gray-500 hover:text-black'}`}>Ver Todas</button>
-              {categories?.map((c: any) => (
-                 <button key={c.id} onClick={() => { navigate('/busca', { state: { category: c.id }}); setIsCatOpen(false); }} className={`text-left py-2 text-sm font-medium transition-colors flex items-center gap-2 ${isDark?'text-gray-400 hover:text-white':'text-gray-500 hover:text-black'}`}>
-                   <Icon name={c.icon || 'category'} size={16} /> {c.name}
-                 </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <button onClick={() => navigate('/favoritos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/favoritos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="favorite_border" /> Favoritos
-      </button>
+      {currentRole === 'client' ? <ClientMenu /> : <ProviderMenu />}
       
-      <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="calendar_today" /> {user?.role === 'professional' ? 'Serviços a Realizar' : 'Meus Serviços'}
-      </button>
-
-      <button onClick={() => navigate('/chat-list')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/chat') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="chat" /> Mensagens
-      </button>
-
       <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
-
-      <button onClick={() => navigate('/painel-profissional/dashboard')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="dashboard" /> Painel do Profissional
-      </button>
-
-
-      <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="settings" /> Configurações
+      
+      <button onClick={toggleRole} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-bold text-sm transition-colors bg-[#3730a3] text-white hover:opacity-90`}>
+        <Icon name="swap_horiz" /> {currentRole === 'client' ? 'Alternar para Modo Profissional' : 'Voltar para Modo Cliente'}
       </button>
     </div>
   );
 
   return (
     <>
-      {/* 
-        Desktop Sidebar: Always visible on large screens
-      */}
+      {/* Desktop Sidebar: Always visible on large screens */}
       <aside className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
         <SidebarContent />
       </aside>
 
-      {/* 
-        Mobile Sidebar: Overlay & Drawer 
-      */}
+      {/* Mobile Sidebar: Overlay & Drawer */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -110,6 +112,7 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories }: any
                   <Icon name="close" size={20} />
                 </button>
               </div>
+
               <SidebarContent />
             </motion.div>
           </>
