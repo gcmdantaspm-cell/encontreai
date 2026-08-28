@@ -1001,21 +1001,7 @@ function ProPanelScreen({ user, isDark, show, categories, addCategory }: any) {
           </Routes>
         </div>
 
-        {/* Mobile Bottom Bar for ProPanel */}
-        <div className={`w-full shrink-0 border-t flex justify-around lg:hidden items-center px-2 z-50 transition-colors duration-300 pb-[env(safe-area-inset-bottom)] h-[calc(4rem+env(safe-area-inset-bottom))] ${isDark ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
-           {tabs.map(t => {
-             const active = loc.pathname.startsWith(t.id);
-             return (
-             <Link to={t.id} key={t.id} className={`flex flex-col items-center justify-center w-20 h-full transition-colors ${active ? 'text-[#f97316]' : (isDark ? 'text-[#a1a1aa]' : 'text-gray-400')}`}>
-               <Icon name={t.icon} fill={active} size={24} />
-               <span className="text-[10px] font-bold mt-1 text-center leading-tight">{t.label}</span>
-             </Link>
-           )})}
-           <button onClick={handleBackToClient} className={`flex flex-col items-center justify-center w-20 h-full transition-colors ${isDark ? 'text-[#a1a1aa]' : 'text-gray-400'}`}>
-             <Icon name="logout" size={24} />
-             <span className="text-[10px] font-bold mt-1 text-center leading-tight">Sair</span>
-           </button>
-        </div>
+        
       </div>
     </div>
   );
@@ -2215,6 +2201,7 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
 }
 
 function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, updateProfile, show }: any) {
+  const navigate = useNavigate();
   const { currentRole, setCurrentRole } = useContext(RoleContext);
   const [editModal, setEditModal] = useState(false);
 
@@ -2271,6 +2258,22 @@ function ProfileScreen({ user, isDark, logout, loginWithGoogle, toggleDarkMode, 
         )}
 
         <div className="flex flex-col gap-3">
+          <button onClick={() => navigate('/chat-list')} className={`p-4 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <div className="flex items-center gap-3">
+              <Icon name="chat" className="text-[#f97316]" />
+              <span className="font-bold">Minhas Mensagens</span>
+            </div>
+            <Icon name="chevron_right" />
+          </button>
+          
+          <button onClick={() => navigate('/favoritos')} className={`p-4 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <div className="flex items-center gap-3">
+              <Icon name="favorite" className="text-[#f97316]" />
+              <span className="font-bold">Meus Favoritos</span>
+            </div>
+            <Icon name="chevron_right" />
+          </button>
+          
           <button onClick={() => setEditModal(true)} className={`p-4 rounded-xl border flex items-center justify-between text-left active:scale-95 transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
             <div className="flex items-center gap-3">
               <Icon name="edit" className="text-[#f97316]" />
