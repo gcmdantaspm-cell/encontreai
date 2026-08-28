@@ -1010,7 +1010,7 @@ function ProPanelScreen({ user, isDark, show, categories, addCategory }: any) {
 function ProDashboardView({ user, isDark }: any) {
   const { apts, updateStatus } = useAppointments(user?.id, user?.role);
   const navigate = useNavigate();
-  const pending = apts.filter((a:any) => a.status === 'approved');
+  const pending = apts.filter((a:any) => a.status === 'pending_approval');
   const completed = apts.filter((a:any) => a.status === 'completed');
   const earned = user.walletBalance || completed.reduce((sum:number, a:any) => sum + (a.price * 0.93), 0);
 
@@ -1446,7 +1446,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    </div>
 
                    {/* Pro Controls */}
-                   {user.role === 'professional' && a.status === 'approved' && (
+                   {user.role === 'professional' && a.status === 'awaiting_execution' && (
                      <div className="flex flex-col gap-2 mt-2 p-3 bg-gray-50 dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-[#3f3f46]">
                        <p className="text-xs text-center font-bold">Inserir Código do Cliente</p>
                        <div className="flex gap-2">
@@ -1476,7 +1476,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                        </div>
                      </div>
                    )}
-                   {user.role === 'professional' && a.status === 'pending' && (
+                   {user.role === 'professional' && a.status === 'pending_approval' && (
                      <div className="flex gap-2 mt-2">
                        <button onClick={()=>updateStatus(a.id, 'pending_payment')} className="flex-1 py-2 bg-[#f97316] text-black rounded-lg text-xs font-bold active:scale-95">Aceitar</button>
                        <button onClick={()=>updateStatus(a.id, 'cancelled')} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-xs font-bold active:scale-95">Recusar</button>
@@ -1490,7 +1490,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    {user.role === 'client' && a.status === 'pending_payment' && (
                      <button onClick={()=>setCheckoutOrder(a)} className="w-full mt-2 py-2 bg-green-500 text-white rounded-lg text-xs font-black active:scale-95 shadow-md flex items-center justify-center gap-2"><Icon name="payments" size={16} /> Pagar Agora</button>
                    )}
-                   {user.role === 'client' && a.status === 'approved' && (
+                   {user.role === 'client' && a.status === 'awaiting_execution' && (
                      <div className="flex flex-col gap-2 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                        <p className="text-xs text-center font-bold text-blue-600 dark:text-blue-400">Código de Liberação</p>
                        <p className="text-2xl text-center font-black tracking-widest text-[#002a5d] dark:text-white">{(a.id.length >= 4 ? a.id.slice(-4) : (a.id + '0000').slice(0,4)).toUpperCase()}</p>
