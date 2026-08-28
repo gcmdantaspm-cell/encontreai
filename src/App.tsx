@@ -137,8 +137,8 @@ function useCategoriesData() {
   const [categories, setCategories] = useState<any[]>(CATEGORIES);
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'categories'), (snap) => {
-       const dbCats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-       const merged = [...CATEGORIES];
+       const dbCats = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+       const merged: any[] = [...CATEGORIES];
        for (const dbCat of dbCats) {
          if (!merged.find(c => c.id === dbCat.id)) {
            merged.push({ id: dbCat.id, name: dbCat.name, icon: dbCat.icon || 'category' });
