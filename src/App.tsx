@@ -393,7 +393,7 @@ function AppContent() {
   if (user?.role === 'pending') return <OnboardingScreen updateRole={updateRole} isDark={isDark} />;
   
   const isProPanel = loc.pathname.startsWith('/painel-profissional');
-  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname) || isProPanel;
+  const hideBottomNav = ['/login', '/cadastro', '/auth'].includes(loc.pathname);
   
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
@@ -415,14 +415,17 @@ function AppContent() {
           )}
 
           <div className="flex-1 flex flex-row relative overflow-hidden min-w-0">
-            {!hideBottomNav && !isProPanel && (
+            {!hideBottomNav && (
               <Sidebar 
                 isOpen={isSidebarOpen} 
                 close={() => setIsSidebarOpen(false)} 
                 user={user} 
                 isDark={isDark} 
                 logout={logout} 
-                categories={categories} 
+                categories={categories}
+                currentRole={currentRole}
+                setCurrentRole={setCurrentRole}
+                updateProfile={updateProfile}
               />
             )}
 
@@ -966,29 +969,7 @@ function ProPanelScreen({ user, isDark, show, categories, addCategory }: any) {
 
   return (
     <div className="flex h-full w-full bg-white dark:bg-black">
-      {/* Desktop Sidebar for ProPanel */}
-      <div className={`hidden lg:flex flex-col w-64 shrink-0 border-r ${isDark ? 'border-[#27272a] bg-[#18181b]' : 'border-gray-200 bg-[#f8f9fa]'}`}>
-         <div className="p-6 pb-2">
-            <h2 className="font-black text-xl text-[#f97316] flex items-center gap-2"><Icon name="handyman" /> Painel PRO</h2>
-         </div>
-         <div className="flex flex-col gap-2 px-4 mt-4 flex-1">
-            {tabs.map(t => {
-              const active = loc.pathname.startsWith(t.id);
-              return (
-                <Link to={t.id} key={t.id} className={`flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors ${active ? 'bg-[#f97316] text-white' : (isDark ? 'text-gray-300 hover:bg-[#27272a]' : 'text-gray-600 hover:bg-gray-200')}`}>
-                  <Icon name={t.icon} fill={active} size={24} />
-                  <span>{t.label}</span>
-                </Link>
-              )
-            })}
-         </div>
-         <div className="p-4 mb-4">
-            <button onClick={handleBackToClient} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors border ${isDark ? 'border-[#3f3f46] text-gray-300 hover:bg-[#27272a]' : 'border-gray-300 text-gray-700 hover:bg-gray-200'}`}>
-              <Icon name="arrow_back" size={20} />
-              <span className="text-sm">Voltar ao Modo Cliente</span>
-            </button>
-         </div>
-      </div>
+      
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative overflow-hidden min-w-0">
