@@ -762,12 +762,66 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
       
       
       <div className={`px-4 pt-2 pb-2 ${isDark?'bg-[#18181b]':'bg-[#f8f9fa]'}`}>
-        <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
-          <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="O que você precisa hoje?" className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" />
-          <button className="px-5 py-2.5 rounded-full bg-[#f97316] text-black shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center">
-            <Icon name="arrow_forward" size={20} />
-          </button>
+        <div className="relative">
+          <div className={`flex items-center p-1 rounded-[2rem] border shadow-sm ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
+            <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
+            <input 
+              value={q} 
+              onChange={e=>setQ(e.target.value)} 
+              onFocus={() => setShowRecent(true)}
+              onBlur={() => setTimeout(() => setShowRecent(false), 200)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveSearch(q);
+              }}
+              placeholder="O que você precisa hoje?" 
+              className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" 
+            />
+            <button 
+              onClick={() => saveSearch(q)}
+              className="px-5 py-2.5 rounded-full bg-[#f97316] text-black shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center"
+            >
+              <Icon name="arrow_forward" size={20} />
+            </button>
+          </div>
+          
+          <AnimatePresence>
+            {showRecent && recentSearches.filter(s => q ? s.toLowerCase().includes(q.toLowerCase()) : true).length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -10 }}
+                className={`absolute top-full left-0 right-0 mt-2 rounded-2xl shadow-xl border z-50 overflow-hidden ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}
+              >
+                <div className={`px-4 py-3 border-b text-xs font-bold uppercase tracking-wider ${isDark?'border-[#3f3f46] text-gray-400':'border-[#e5e7eb] text-gray-500'}`}>
+                  {q ? 'Sugestões' : 'Buscas Recentes'}
+                </div>
+                <div className="flex flex-col">
+                  {recentSearches
+                    .filter(s => q ? s.toLowerCase().includes(q.toLowerCase()) : true)
+                    .map((term, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => saveSearch(term)}
+                      className={`flex items-center justify-between px-4 py-3 text-left transition-colors ${isDark?'hover:bg-[#3f3f46]':'hover:bg-gray-50'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon name={q ? 'search' : 'history'} size={18} className="opacity-50" />
+                        <span className="font-medium text-sm">{term}</span>
+                      </div>
+                      {!q && (
+                        <div 
+                          onClick={(e) => removeSearch(e, term)} 
+                          className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+                        >
+                          <Icon name="close" size={16} className="opacity-50" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
       
