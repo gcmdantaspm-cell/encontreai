@@ -696,10 +696,49 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
   const [filter, setFilter] = useState(loc.state?.filter || 'all');
   const [bookingService, setBookingService] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'list'|'map'>(loc.state?.view || 'list');
+  
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('recentSearches');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showRecent, setShowRecent] = useState(false);
+
+  const saveSearch = (term: string) => {
+    if (!term || !term.trim()) return;
+    const t = term.trim();
+    setRecentSearches(prev => {
+      const newSearches = [t, ...prev.filter(s => s !== t)].slice(0, 5);
+      try {
+        localStorage.setItem('recentSearches', JSON.stringify(newSearches));
+      } catch (e) {}
+      return newSearches;
+    });
+    setShowRecent(false);
+    setQ(t);
+  };
+
+  const removeSearch = (e: any, term: string) => {
+    e.stopPropagation();
+    setRecentSearches(prev => {
+      const newSearches = prev.filter(s => s !== term);
+      try {
+        localStorage.setItem('recentSearches', JSON.stringify(newSearches));
+      } catch (e) {}
+      return newSearches;
+    });
+  };
+
   useEffect(() => {
     if(loc.state?.view) setViewMode(loc.state.view);
     if(loc.state?.filter) setFilter(loc.state.filter);
-    if(loc.state?.q !== undefined || loc.state?.category) setQ(loc.state.q || loc.state.category || '');
+    if(loc.state?.q !== undefined || loc.state?.category) {
+       setQ(loc.state.q || loc.state.category || '');
+       if (loc.state.q) saveSearch(loc.state.q);
+    }
   }, [loc.state]);
   
   const allServices = useMemo(() => {
