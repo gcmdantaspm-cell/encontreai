@@ -9,12 +9,12 @@ function Icon({ name, className, size }: { name: string, className?: string, siz
 export function Sidebar({ isOpen, close, user, isDark, logout, categories, currentRole, setCurrentRole, updateProfile }: any) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isCatOpen, setIsCatOpen] = useState(false);
 
   // Close sidebar on location change for mobile
   useEffect(() => {
     close();
-  }, [location.pathname, close]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const toggleRole = () => {
     if (setCurrentRole) {
@@ -26,57 +26,23 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories, curre
     }
   };
 
-  const ClientMenu = () => (
-    <>
-      <button onClick={() => navigate('/busca')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/busca' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`} aria-label="Home">
-        <Icon name="home" /> Home
+  const NavButton = ({ icon, label, path, onClick }: any) => {
+    const active = location.pathname === path || (path !== '/busca' && path !== '/' && location.pathname.startsWith(path));
+    return (
+      <button 
+        onClick={() => {
+          if (onClick) onClick();
+          else navigate(path);
+        }} 
+        className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors w-full text-left ${active ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}
+      >
+        <Icon name={icon} /> {label}
       </button>
-      <button onClick={() => navigate('/pesquisa')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pesquisa' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`} aria-label="Buscar">
-        <Icon name="search" /> Buscar
-      </button>
-      <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="assignment" /> Meus Serviços
-      </button>
-      <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="settings" /> Perfil
-      </button>
-    </>
-  );
-
-  const ProviderMenu = () => (
-    <>
-      <button onClick={() => navigate('/painel-profissional/dashboard')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional/dashboard') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="dashboard" /> Painel
-      </button>
-      <button onClick={() => navigate('/painel-profissional/servicos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname.startsWith('/painel-profissional/servicos') ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="campaign" /> Meus Anúncios
-      </button>
-      <button onClick={() => navigate('/pedidos')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/pedidos' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="assignment" /> Serviços a Realizar
-      </button>
-      <button onClick={() => navigate('/perfil')} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-medium text-sm transition-colors ${location.pathname === '/perfil' ? 'bg-[#f97316] text-black' : 'hover:bg-gray-100 dark:hover:bg-[#27272a]'}`}>
-        <Icon name="settings" /> Perfil
-      </button>
-    </>
-  );
-
-  const SidebarContent = () => (
-    <div className="flex-1 overflow-y-auto py-4 flex flex-col px-4 gap-1 hide-scrollbar">
-      {currentRole === 'client' ? <ClientMenu /> : <ProviderMenu />}
-      
-      <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
-      
-      <button onClick={toggleRole} className={`flex items-center gap-4 px-4 py-3 rounded-lg font-bold text-sm transition-colors bg-[#3730a3] text-white hover:opacity-90`}>
-        <Icon name="swap_horiz" /> {currentRole === 'client' ? 'Alternar para Modo Profissional' : 'Voltar para Modo Cliente'}
-      </button>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
-      
-
-      {/* Mobile Sidebar: Overlay & Drawer */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -93,24 +59,72 @@ export function Sidebar({ isOpen, close, user, isDark, logout, categories, curre
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={`fixed top-0 left-0 bottom-0 w-[80%] max-w-[320px] z-[101] shadow-2xl flex flex-col  ${isDark ? 'bg-[#18181b] text-white' : 'bg-white text-gray-900'}`}
+              className={`fixed top-0 left-0 bottom-0 w-[85%] max-w-[320px] z-[101] shadow-2xl flex flex-col ${isDark ? 'bg-[#18181b] text-white' : 'bg-white text-gray-900'}`}
               role="dialog"
               aria-modal="true"
               aria-label="Menu Principal"
             >
-              <div className={`p-6 border-b ${isDark ? 'border-[#27272a]' : 'border-gray-200'} flex items-center justify-between`}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#f97316] to-[#ea580c] flex items-center justify-center text-white shadow-md">
-                    <Icon name="handshake" size={20} />
-                  </div>
-                  <span className="font-black text-xl tracking-tight">Encontre<span className="text-[#f97316]">Aí</span></span>
-                </div>
-                <button onClick={close} className="p-2 rounded-full bg-gray-100 dark:bg-[#27272a]" aria-label="Fechar Menu">
+              {/* Cabeçalho do Perfil */}
+              <div className={`p-6 border-b ${isDark ? 'border-[#27272a]' : 'border-gray-200'} flex flex-col relative`}>
+                <button onClick={close} className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-[#27272a]" aria-label="Fechar Menu">
                   <Icon name="close" size={20} />
                 </button>
+                
+                {user ? (
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                      <img src={user.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} alt="Avatar" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="font-black text-lg truncate">{user.name}</h3>
+                      <p className="text-sm opacity-70">EncontreAi Member</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f97316] to-[#ea580c] flex items-center justify-center text-white shadow-md">
+                      <Icon name="handshake" size={24} />
+                    </div>
+                    <span className="font-black text-2xl tracking-tight">Encontre<span className="text-[#f97316]">Aí</span></span>
+                  </div>
+                )}
               </div>
 
-              <SidebarContent />
+              {/* Itens de Navegação Principal */}
+              <div className="flex-1 overflow-y-auto py-4 flex flex-col px-4 gap-1 hide-scrollbar">
+                <NavButton icon="home" label="Home" path="/busca" />
+                <NavButton icon="person" label="Profile" path="/perfil" />
+                <NavButton icon="location_on" label="Professionals Near Me" path="/pesquisa" />
+                <NavButton icon="category" label="Categories" path="/categorias" />
+                <NavButton icon="favorite" label="Favorites" path="/favoritos" />
+                <NavButton icon="calendar_today" label="My Appointments" path="/pedidos" />
+                
+                <hr className={`my-4 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
+                
+                {/* Seção Profissional */}
+                <p className="px-4 text-xs font-bold uppercase tracking-wider opacity-50 mb-2">Modo</p>
+                <button 
+                  onClick={toggleRole} 
+                  className={`flex items-center gap-4 px-4 py-3 rounded-lg font-bold text-sm transition-colors w-full text-left mb-4 ${currentRole === 'professional' ? 'bg-[#3730a3] text-white' : 'bg-gray-100 dark:bg-[#27272a]'}`}
+                >
+                  <Icon name="swap_horiz" /> {currentRole === 'client' ? 'Professional Mode' : 'Client Mode'}
+                </button>
+                
+                <hr className={`my-2 ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`} />
+
+                {/* Opções de Conta */}
+                <NavButton icon="settings" label="Settings" path="/configuracoes" />
+                <NavButton icon="help" label="Help & Support" path="/ajuda" />
+              </div>
+
+              {/* Rodapé */}
+              {user && (
+                <div className={`p-4 border-t ${isDark ? 'border-[#27272a]' : 'border-gray-200'}`}>
+                  <button onClick={() => { close(); logout(); }} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-500 font-bold hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    <Icon name="logout" /> Logout
+                  </button>
+                </div>
+              )}
             </motion.div>
           </>
         )}
