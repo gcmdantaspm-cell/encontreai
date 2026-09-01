@@ -1,8 +1,99 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helpers Globais
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Default Deny
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false; 
+    }
+
+    // ==========================================
+    // 1. Users
+    // ==========================================
+    match /users/{userId} {
+      // Leitura pública (necessário para o marketplace listar os profissionais)
+      // OBSERVAÇÃO: O Firestore não suporta restrição de leitura por campo dentro do mesmo documento.
+      // Qualquer pessoa pode ler todos os campos deste documento. Para evitar o vazamento de dados 
+      // sensíveis (CPF, etc), eles precisariam estar isolados em uma subcoleção separada, como /users/{id}/private/.
+      allow read: if true;
+      
+      // Escrita: Apenas o próprio usuário pode editar seu documento
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ==========================================
+    // 2. Services
+    // ==========================================
+    match /services/{serviceId} {
+      allow read: if true;
+      
+      allow create: if isSignedIn() && incoming().professionalId == request.auth.uid;
+      allow update, delete: if isSignedIn() && existing().professionalId == request.auth.uid;
+    }
+
+    // ==========================================
+    // 3. Appointments
+    // ==========================================
+    match /appointments/{appointmentId} {
+      function isAptParticipant(data) {
+        return request.auth.uid == data.clientId || request.auth.uid == data.professionalId;
+      }
+      
+      allow read: if isSignedIn() && isAptParticipant(existing());
+      allow create: if isSignedIn() && isAptParticipant(incoming());
+      // Para update, o usuário deve ser participante tanto no estado atual quanto no futuro 
+      // (evita que ele mude o ID de um participante e tome posse do agendamento)
+      allow update: if isSignedIn() && isAptParticipant(existing()) && isAptParticipant(incoming());
+      allow delete: if isSignedIn() && isAptParticipant(existing());
+    }
+
+    // ==========================================
+    // 4. Reviews
+    // ==========================================
+    match /reviews/{reviewId} {
+      allow read: if true;
+      
+      // Apenas quem enviou pode criar (autenticado)
+      allow create: if isSignedIn() && incoming().clientId == request.auth.uid;
+      
+      // Edição e exclusão bloqueadas permanentemente
+      allow update, delete: if false;
+    }
+
+    // ==========================================
+    // 5. Chats
+    // ==========================================
+    match /chats/{chatId} {
+      function isChatParticipant(data) {
+        return request.auth.uid == data.senderId || request.auth.uid == data.receiverId;
+      }
+      
+      allow read: if isSignedIn() && isChatParticipant(existing());
+      allow create: if isSignedIn() && isChatParticipant(incoming());
+      allow update: if isSignedIn() && isChatParticipant(existing()) && isChatParticipant(incoming());
+      allow delete: if isSignedIn() && isChatParticipant(existing());
+    }
+
+    // ==========================================
+    // 6. Coupons
+    // ==========================================
+    match /coupons/{couponId} {
+      allow read: if true;
+      
+      allow create: if isSignedIn() && incoming().professionalId == request.auth.uid;
+      allow update, delete: if isSignedIn() && existing().professionalId == request.auth.uid;
     }
   }
 }

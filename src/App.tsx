@@ -12,6 +12,11 @@ import { GlobalNotifications } from "./components/GlobalNotifications";
 import { Logo } from "./components/Logo";
 import { Sidebar } from "./components/Sidebar";
 import { MapView } from "./components/MapView";
+import { getAIRecommendations } from './services/geminiService';
+import { CategoriesScreen } from './components/CategoriesScreen';
+import { SettingsScreen } from './components/SettingsScreen';
+import { HelpScreen } from './components/HelpScreen';
+
 type Screen = 'home' | 'search' | 'orders' | 'profile' | 'pro-detail' | 'auth' | 'dashboard' | 'my-services' | 'favorites' | 'chat-list' | 'chat-detail';
 
 function Icon({ name, fill, size, className, ...rest }: { name: string; fill?: boolean; size?: number; className?: string; [x: string]: any }) {
@@ -122,7 +127,7 @@ function useSearch() {
           id: d.id, name: u.name, profession: u.profession || 'Especialista',
           avatarUrl: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.avatarInitial}&background=random`,
           coverUrl: u.coverUrl || `https://picsum.photos/seed/${d.id}/600/300`,
-          rating: u.rating || 5.0, verified: true, services, description: u.description
+          rating: u.rating || 5.0, verified: u.verified || false, services, description: u.description
         } as Professional;
       }));
       setPros([...PROFESSIONALS, ...dbPros]);
@@ -435,10 +440,13 @@ function AppContent() {
                <Route path="/" element={<Navigate to="/busca" />} />
                <Route path="/busca" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
                <Route path="/pesquisa" element={<SearchScreen pros={pros} isDark={isDark} user={user} show={show} toggleFavorite={toggleFavorite} categories={categories} />} />
+               <Route path="/categorias" element={<CategoriesScreen isDark={isDark} />} />
                <Route path="/pedidos" element={<OrdersScreen user={user} pros={pros} go={go} isDark={isDark} show={show} />} />
                <Route path="/favoritos" element={<FavoritesScreen user={user} pros={pros} isDark={isDark} toggleFavorite={toggleFavorite} show={show} />} />
                
                <Route path="/perfil" element={<ProfileScreen user={user} isDark={isDark} logout={logout} loginWithGoogle={loginWithGoogle} toggleDarkMode={toggleDarkMode} updateProfile={updateProfile} show={show} />} />
+               <Route path="/configuracoes" element={<SettingsScreen user={user} isDark={isDark} toggleDarkMode={toggleDarkMode} show={show} logout={logout} />} />
+               <Route path="/ajuda" element={<HelpScreen isDark={isDark} />} />
                <Route path="/auth" element={<AuthScreen loginWithGoogle={loginWithGoogle} loginWithEmail={loginWithEmail} registerWithEmail={registerWithEmail} isDark={isDark} show={show} />} />
 
                
@@ -595,7 +603,7 @@ function HomeScreen({ pros, isDark, user, toggleFavorite }: any) {
           {topServices.map((s:any) => (
             <Link to={`/servico/${s.id}`} key={s.id} className={`flex items-stretch gap-4 p-3 rounded-2xl border shadow-sm active:scale-[0.98] transition-transform ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
               <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
-                <img src={s.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
+                <img src={s.pro?.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
               </div>
               <div className="flex flex-col justify-center flex-1 py-1">
                 <div className="flex items-center gap-1 mb-0.5">
@@ -707,6 +715,33 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
   });
   const [showRecent, setShowRecent] = useState(false);
 
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState('');
+  const [aiRecommendedIds, setAiRecommendedIds] = useState<string[]>([]);
+
+  const handleAISearch = async () => {
+    if (!q || !q.trim()) return;
+    setAiLoading(true);
+    setAiReasoning('');
+    setAiRecommendedIds([]);
+    try {
+      const simplifiedServices = allServices.map((s:any) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        category: s.category || s.categoryId,
+        profession: s.pro.profession
+      }));
+      const response = await getAIRecommendations(q, simplifiedServices);
+      setAiRecommendedIds(response.recommendedIds || []);
+      setAiReasoning(response.reasoning || '');
+    } catch (err: any) {
+      show(err.message || 'Falha na busca inteligente.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const saveSearch = (term: string) => {
     if (!term || !term.trim()) return;
     const t = term.trim();
@@ -749,13 +784,35 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
     if (filter === 'favorites') {
        if(!user?.favorites?.includes(s.pro.id)) return false;
     }
+    
+    if (aiRecommendedIds.length > 0) {
+       // If there's an AI search, include only if it's in the AI recommended IDs 
+       // or we could include everything but sort them? The prompt says "Filtre e destaque os resultados recomendados no topo da lista".
+       // Let's include everything that matches the normal query OR is recommended by AI, then sort.
+       if (aiRecommendedIds.includes(s.id)) return true;
+    }
+    
     if (!q) return true;
     const term = q.toLowerCase();
     return s.title.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term) || s.pro.name.toLowerCase().includes(term) || s.pro.profession.toLowerCase().includes(term) || s.category?.toLowerCase() === term || s.categoryId?.toLowerCase() === term;
   });
   
-  if (filter === 'price') { filtered.sort((a:any, b:any) => a.price - b.price); } 
-  else if (filter === 'rate') { filtered.sort((a:any, b:any) => b.pro.rating - a.pro.rating); }
+  // Sort
+  if (aiRecommendedIds.length > 0) {
+    filtered.sort((a:any, b:any) => {
+      const aRec = aiRecommendedIds.includes(a.id) ? 1 : 0;
+      const bRec = aiRecommendedIds.includes(b.id) ? 1 : 0;
+      if (aRec !== bRec) return bRec - aRec; // Recommended first
+      // fallback to original sorts if both are or aren't recommended
+      if (filter === 'price') return a.price - b.price;
+      if (filter === 'rate') return b.pro.rating - a.pro.rating;
+      return 0;
+    });
+  } else if (filter === 'price') { 
+    filtered.sort((a:any, b:any) => a.price - b.price); 
+  } else if (filter === 'rate') { 
+    filtered.sort((a:any, b:any) => b.pro.rating - a.pro.rating); 
+  }
 
   return (
     <div className="pb-8 overflow-y-auto hide-scrollbar flex-1 flex flex-col h-full">
@@ -767,7 +824,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
             <Icon name="search" className={`ml-4 ${isDark?'text-[#a1a1aa]':'text-gray-400'}`} />
             <input 
               value={q} 
-              onChange={e=>setQ(e.target.value)} 
+              onChange={e=>{ setQ(e.target.value); setAiRecommendedIds([]); setAiReasoning(''); }} 
               onFocus={() => setShowRecent(true)}
               onBlur={() => setTimeout(() => setShowRecent(false), 200)}
               onKeyDown={(e) => {
@@ -776,6 +833,13 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
               placeholder="O que você precisa hoje?" 
               className="flex-1 bg-transparent p-3 outline-none text-sm font-medium placeholder-opacity-50" 
             />
+            <button 
+              onClick={() => { saveSearch(q); handleAISearch(); }}
+              className={`px-4 py-2.5 rounded-full shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center gap-1 ${isDark?'bg-indigo-600/20 text-indigo-400':'bg-indigo-100 text-indigo-700'}`}
+              title="Busca Inteligente com IA"
+            >
+              <Icon name="auto_awesome" size={20} />
+            </button>
             <button 
               onClick={() => saveSearch(q)}
               className="px-5 py-2.5 rounded-full bg-[#f97316] text-black shadow-md active:scale-95 transition-transform mr-1 flex items-center justify-center"
@@ -825,6 +889,20 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
         </div>
       </div>
       
+      {/* AI Loading & Reasoning */}
+      {aiLoading && (
+        <div className="flex flex-col items-center justify-center py-6">
+           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-3"></div>
+           <p className={`text-sm font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>Análise com IA em andamento...</p>
+        </div>
+      )}
+
+      {aiReasoning && !aiLoading && (
+        <div className={`mx-4 mt-2 mb-4 p-4 rounded-xl border flex items-start gap-3 shadow-sm ${isDark ? 'bg-indigo-900/30 border-indigo-500/30' : 'bg-indigo-50 border-indigo-100'}`}>
+          <Icon name="auto_awesome" className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" size={20} />
+          <p className={`text-sm leading-relaxed font-medium ${isDark ? 'text-indigo-200' : 'text-indigo-900'}`}>{aiReasoning}</p>
+        </div>
+      )}
       
       <div className="px-4 mb-4 mt-2">
         <h2 className="font-bold text-lg mb-3">Categorias</h2>
@@ -874,7 +952,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
                 return (
                   <div key={s.id} className={`flex flex-row p-3 rounded-2xl border shadow-sm hover:shadow-md transition-all items-center gap-3 ${isDark?'bg-[#27272a] border-[#3f3f46]':'bg-white border-[#e5e7eb]'}`}>
                     <div className="w-[100px] h-[100px] shrink-0 rounded-xl overflow-hidden relative bg-gray-200 dark:bg-gray-800">
-                       <img src={s.imageUrls?.[0] || s.imageUrl || s.pro?.avatarUrl || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop"} className="w-full h-full object-cover" />
+                       <img src={s.imageUrls?.[0] || s.imageUrl || s.pro?.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
                        <button onClick={() => toggleFavorite(s.pro.id)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center active:scale-95 transition-transform">
                          <Icon name="favorite" size={14} fill={isFav} className={isFav ? 'text-red-500' : 'text-white'} />
                        </button>
@@ -885,7 +963,7 @@ function SearchScreen({ pros, isDark, user, toggleFavorite, show, categories }: 
                           <h3 className={`font-bold text-[15px] leading-tight mb-1 line-clamp-1 ${isDark?'text-white':'text-[#002a5d]'}`}>{s.title}</h3>
                           <Link to={`/servico/${s.id}`} className="flex items-center gap-1.5 active:opacity-70 transition-opacity mb-2">
                              <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
-                                <img src={s.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
+                                <img src={s.pro?.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
                              </div>
                              <span className={`text-xs font-medium ${isDark?'text-gray-300':'text-gray-700'}`}>{s.pro.name}</span>
                              <div className="flex items-center text-[#f97316] font-bold text-[10px] ml-auto">
@@ -955,7 +1033,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
         
         <div className="absolute -bottom-10 left-4 flex items-end gap-4">
           <div className={`w-24 h-24 rounded-full border-4 overflow-hidden ${isDark?'border-[#121212] bg-gray-800':'border-[#f8f9fa] bg-gray-200'}`}>
-            <img src={pro.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
+            <img src={pro.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
           </div>
         </div>
       </div>
@@ -984,7 +1062,7 @@ function ServiceDetailScreen({ pros, user, isDark, show, toggleFavorite }: any) 
             {pro.services.map((s:any) => (
               <div key={s.id} className={`p-3 rounded-2xl border flex items-center gap-3 shadow-sm ${isDark?'bg-[#1e1e1e] border-[#2a2a2a]':'bg-white border-[#e5e7eb]'}`}>
                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-800 shrink-0">
-                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl || "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=300&fit=crop"} className="w-full h-full object-cover" />
+                   <img src={s.imageUrls?.[0] || s.imageUrl || pro.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
                  </div>
                  <div className="flex-1">
                    <h3 className="font-bold text-sm leading-tight mb-1">{s.title}</h3>
@@ -1401,22 +1479,21 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment');
     const proposalId = params.get('proposalId');
-    if(paymentStatus === 'success' && proposalId) {
+    const appointmentId = params.get('appointmentId');
+
+    if(paymentStatus === 'success' && appointmentId) {
        // Check if status is already updated to avoid race condition / multiple updates
-       updateStatus(proposalId, 'awaiting_execution');
+       updateStatus(appointmentId, 'awaiting_execution');
        
-       // Update chat message if chatMsgId exists on this appointment
-       getDoc(doc(db, 'appointments', proposalId)).then(snap => {
-         if (snap.exists() && snap.data().chatMsgId) {
-           updateDoc(doc(db, 'chats', snap.data().chatMsgId), { 'proposal.status': 'paid' }).catch(console.error);
-         }
-       }).catch(console.error);
+       if (proposalId) {
+         updateDoc(doc(db, 'chats', proposalId), { 'proposal.status': 'paid' }).catch(console.error);
+       }
 
        if(show) show('Pagamento confirmado com sucesso! Dinheiro retido. Código gerado.');
        // Clean up URL
        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (paymentStatus === 'success') {
-       if(show) show('Pagamento confirmado com sucesso! Dinheiro retido.');
+    } else if (paymentStatus === 'cancelled') {
+       if(show) show('Pagamento cancelado. O agendamento continuará aguardando pagamento.');
        window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [show, updateStatus]);
@@ -1497,7 +1574,7 @@ function OrdersScreen({ user, pros, go, isDark, show }: any) {
                    <div className="flex justify-between items-start pl-1">
                      <div className="flex gap-3">
                        {user.role === 'client' && pro?.avatarUrl ? (
-                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"><img src={pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover"/></div>
+                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"><img src={pro?.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover"/></div>
                        ) : <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center shrink-0"><Icon name="person" className="opacity-50" /></div>}
                        <div>
                          <div className="flex items-center gap-1 mb-0.5">
@@ -1616,7 +1693,7 @@ function ProDetailScreen({ pro, onBack, user, go, show, isDark, toggleFavorite }
         <button onClick={() => { if(!user) go('auth'); else toggleFavorite(pro.id); }} className="p-2 rounded-full bg-black/20 backdrop-blur-sm"><Icon name="favorite" fill={isFav} className={isFav ? 'text-[#c2185b]' : 'text-white'} /></button>
       </header>
       <div className="flex-1 overflow-y-auto pb-32">
-        <div className="relative w-full h-80"><img src={pro.coverUrl || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop'} className="w-full h-full object-cover" /><div className={`absolute inset-0 bg-gradient-to-t ${isDark ? 'from-[#18181b] to-transparent' : 'from-[#f8f9fa] to-transparent'}`} /></div>
+        <div className="relative w-full h-80"><img src={pro.coverUrl || 'https://picsum.photos/400/300'} className="w-full h-full object-cover" /><div className={`absolute inset-0 bg-gradient-to-t ${isDark ? 'from-[#18181b] to-transparent' : 'from-[#f8f9fa] to-transparent'}`} /></div>
         <div className="px-4 -mt-10 relative z-10">
           <h2 className="font-black text-2xl leading-tight mb-1 flex items-center gap-2">{pro.name}{pro.verified && <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-green-500 bg-green-50 dark:bg-green-500/10 px-2 py-0.5 rounded-full"><Icon name="verified_user" size={14} fill/> Verificado</span>}</h2>
           <p className={`text-base font-semibold ${isDark?'text-[#60a5fa]':'text-[#002a5d]'}`}>{pro.profession}</p>
@@ -1749,7 +1826,7 @@ function BookingModal({ proId, svc, onClose, onBook, isDark }: any) {
         <div className="p-4 max-w-xl mx-auto w-full">
           <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl border border-gray-200 dark:border-[#2a2a2a] p-4 flex gap-4 mb-6 shadow-sm">
             <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-800 relative">
-               <img src={svc?.pro?.avatarUrl || "https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=150&h=150&fit=crop"} className="w-full h-full object-cover" />
+               <img src={svc?.pro?.avatarUrl || "https://picsum.photos/400/300"} className="w-full h-full object-cover" />
                {svc.pro.verified && <div className="absolute top-2 right-2 p-0.5 bg-white rounded-full flex items-center justify-center"><Icon name="verified" size={16} className="text-blue-600" fill/></div>}
             </div>
             <div className="flex flex-col justify-center">
@@ -2067,14 +2144,46 @@ function ChatDetailScreen({ user, isDark }: any) {
     if(checkoutProposal) {
       try {
         const price = checkoutProposal.proposal.price;
-        // Mock successful payment
-        await add({ professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId, clientId: user.id, clientName: user.name, serviceId: 'custom', serviceTitle: 'Serviço Personalizado', price: price, date: checkoutProposal.proposal.date || new Date().toISOString().split('T')[0], time: checkoutProposal.proposal.time || 'A Combinar', status: 'awaiting_execution', paymentMethod: method });
-        await updateMessage(checkoutProposal.id, { 'proposal.status': 'paid' });
-        setCheckoutProposal(null);
-        alert('Pagamento via ' + method + ' concluído com sucesso!');
+        const fee = price * 0.05;
+
+        // Create the appointment locally as 'pending_payment'
+        const aptRef = await addDoc(collection(db, 'appointments'), {
+           professionalId: checkoutProposal.senderId === user.id ? partnerId : checkoutProposal.senderId,
+           clientId: user.id,
+           clientName: user.name,
+           serviceId: 'custom',
+           serviceTitle: 'Serviço Personalizado',
+           price: price,
+           date: checkoutProposal.proposal.date || new Date().toISOString().split('T')[0],
+           time: checkoutProposal.proposal.time || 'A Combinar',
+           status: 'pending_payment',
+           paymentMethod: method,
+           createdAt: new Date().toISOString(),
+           chatMsgId: checkoutProposal.id
+        });
+
+        // Call backend to create Stripe Checkout Session
+        const res = await fetch('/api/create-checkout-session', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              proposalId: checkoutProposal.id,
+              appointmentId: aptRef.id,
+              serviceTitle: 'Serviço Personalizado',
+              price,
+              fee
+           })
+        });
+
+        const data = await res.json();
+        if (data.url) {
+           window.location.href = data.url;
+        } else {
+           alert('Erro ao iniciar checkout: ' + (data.error || 'Desconhecido'));
+        }
       } catch (err) {
         console.error(err);
-        alert('Erro ao concluir pagamento.');
+        alert('Erro ao processar pagamento.');
       }
     }
   };
@@ -2250,6 +2359,31 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
   const [desc, setDesc] = useState(user.description || '');
   const [profession, setProfession] = useState(user.profession || '');
   const [region, setRegion] = useState(user.region || '');
+  const [loadingGeo, setLoadingGeo] = useState(false);
+
+  const handleSave = async () => {
+    setLoadingGeo(true);
+    let lat = user.latitude;
+    let lon = user.longitude;
+    
+    if (region && region !== user.region) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(region)}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          lat = parseFloat(data[0].lat);
+          lon = parseFloat(data[0].lon);
+        } else {
+          console.warn("Location not found via Nominatim");
+        }
+      } catch (err) {
+        console.error("Geocoding erro:", err);
+      }
+    }
+    
+    onSave({ avatarUrl: av, description: desc, profession, region, location: region, latitude: lat, longitude: lon });
+    setLoadingGeo(false);
+  };
 
   return (
     <>
@@ -2268,7 +2402,9 @@ function EditProfileModal({ user, onClose, onSave, isDark, show }: any) {
           <input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Sua Região/Cidade" className={`w-full p-4 rounded-xl border outline-none text-sm ${isDark?'bg-[#18181b] border-[#3f3f46] text-white':'bg-[#f8f9fa] border-[#e5e7eb]'}`} />
         </div>
 
-        <button onClick={() => onSave({ avatarUrl: av, description: desc, profession, region })} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform">Salvar Alterações</button>
+        <button onClick={handleSave} disabled={loadingGeo} className="w-full py-4 rounded-xl font-bold text-black bg-[#f97316] shadow-lg active:scale-95 transition-transform disabled:opacity-50">
+          {loadingGeo ? 'Buscando Localização...' : 'Salvar Alterações'}
+        </button>
       </motion.div>
     </>
   );

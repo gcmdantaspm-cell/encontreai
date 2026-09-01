@@ -36,35 +36,26 @@ export function MapView({ pros, isDark }: { pros: Professional[], isDark: boolea
   const [proLocations, setProLocations] = useState<{ pro: Professional, loc: [number, number] }[]>([]);
 
   useEffect(() => {
+    // Filter pros with valid coordinates first
+    const validPros = pros
+      .filter(p => p.latitude && p.longitude)
+      .map(pro => ({ pro, loc: [pro.latitude!, pro.longitude!] as [number, number] }));
+
+    setProLocations(validPros);
+
     // Get user's actual location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setUserLoc([lat, lng]);
-          
-          // Generate mock locations around the user for the pros (within ~5km)
-          const generated = pros.map(pro => {
-            const rLat = lat + (Math.random() - 0.5) * 0.05;
-            const rLng = lng + (Math.random() - 0.5) * 0.05;
-            return { pro, loc: [rLat, rLng] as [number, number] };
-          });
-          setProLocations(generated);
+          setUserLoc([pos.coords.latitude, pos.coords.longitude]);
         },
         (err) => {
           console.warn("Geolocation denied or error. Fallback to default (São Paulo).", err);
-          const defaultLoc: [number, number] = [-23.5505, -46.6333];
-          setUserLoc(defaultLoc);
-          
-          const generated = pros.map(pro => {
-            const rLat = defaultLoc[0] + (Math.random() - 0.5) * 0.05;
-            const rLng = defaultLoc[1] + (Math.random() - 0.5) * 0.05;
-            return { pro, loc: [rLat, rLng] as [number, number] };
-          });
-          setProLocations(generated);
+          setUserLoc([-23.5505, -46.6333]);
         }
       );
+    } else {
+      setUserLoc([-23.5505, -46.6333]);
     }
   }, [pros]);
 

@@ -36,6 +36,8 @@ export interface Professional extends AppUser {
   coverUrl?: string;
   portfolio?: string[];
   location?: string;
+  latitude?: number;
+  longitude?: number;
   rating: number;
   reviewsCount: number;
   verified: boolean;

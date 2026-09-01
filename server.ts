@@ -26,7 +26,7 @@ async function startServer() {
       }
 
       const stripeClient = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
-      const { proposalId, serviceTitle, price, fee } = req.body;
+      const { proposalId, appointmentId, serviceTitle, price, fee } = req.body;
       const totalAmount = Math.round((price + fee) * 100); // in cents
 
       // We'll use the origin to redirect back to the app
@@ -47,10 +47,11 @@ async function startServer() {
           },
         ],
         mode: "payment",
-        success_url: `${origin}/pedidos?payment=success&proposalId=${proposalId}`,
-        cancel_url: `${origin}/chat-list?payment=cancelled`,
+        success_url: `${origin}/pedidos?payment=success&appointmentId=${appointmentId}&proposalId=${proposalId}`,
+        cancel_url: `${origin}/pedidos?payment=cancelled`,
         metadata: {
           proposalId,
+          appointmentId
         },
       });
 
